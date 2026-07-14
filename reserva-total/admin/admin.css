@@ -1,0 +1,3 @@
+.rt-admin-wrap { padding: 20px; }
+.rt-admin-wrap h1 { color: #0d9488; display: flex; align-items: center; gap: 10px; }
+.rt-version { background: #0d9488; color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }

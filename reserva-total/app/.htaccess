@@ -1,0 +1,9 @@
+Options -Indexes
+<Files "rt-config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+<Files "*.json">
+    Order Allow,Deny
+    Deny from all
+</Files>

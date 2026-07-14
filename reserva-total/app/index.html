@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reserva Total</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+/* Flatpickr dark override */
+.flatpickr-calendar{background:#1a1a2e;border:1px solid #2a2a4a;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+.flatpickr-day{color:#e0e0f0}.flatpickr-day:hover,.flatpickr-day.prevMonthDay:hover,.flatpickr-day.nextMonthDay:hover{background:#2a2a4a;border-color:#2a2a4a}
+.flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#0d9488;border-color:#0d9488;color:#fff}
+.flatpickr-day.inRange{background:#0d948833;border-color:transparent;box-shadow:-5px 0 0 #0d948833,5px 0 0 #0d948833}
+.flatpickr-day.today{border-color:#0d9488}.flatpickr-day.today:hover{background:#0d9488;color:#fff}
+.flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:#44446a}
+.flatpickr-month,.flatpickr-weekdays,.flatpickr-weekday,.flatpickr-current-month,.flatpickr-monthDropdown-months{background:#13131f;color:#aaaacc;fill:#aaaacc}
+.flatpickr-current-month input.cur-year,.flatpickr-monthDropdown-months{color:#e0e0f0;background:transparent}
+.flatpickr-time{background:#1a1a2e;border-top:1px solid #2a2a4a}
+.flatpickr-time input,.flatpickr-time .flatpickr-time-separator{color:#e0e0f0}.flatpickr-time input:hover,.flatpickr-time input:focus{background:#2a2a4a}
+.flatpickr-prev-month svg,.flatpickr-next-month svg{fill:#aaaacc}
+.numInputWrapper span.arrowUp:after{border-bottom-color:#aaaacc}.numInputWrapper span.arrowDown:after{border-top-color:#aaaacc}
+</style>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+:root{
+  --bg:#0a0a14;--surf:#111122;--elev:#1a1a2e;--bdr:#2a2a4a;--bdrl:#3a3a6a;
+  --acc:#0d9488;--acc2:#14b8a6;--accg:rgba(13,148,136,.12);
+  --t1:#e0e0f0;--t2:#aaaacc;--t3:#666688;
+  --hov:rgba(255,255,255,.04);
+  --r:8px;--rl:12px;
+  --pending:#f59e0b;--paid:#3b82f6;--confirmed:#0d9488;
+  --in_progress:#8b5cf6;--completed:#6b7280;--cancelled:#ef4444;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:13px}
+code{font-family:'Fira Mono',monospace}
+input,select,textarea{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 12px;font-size:13px;color:var(--t1);outline:none;transition:.15s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+select option{background:var(--elev)}
+label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:700;border:none;cursor:pointer;transition:.15s;text-decoration:none}
+.btn-primary{background:var(--acc);color:#fff}.btn-primary:hover{background:var(--acc2)}
+.btn-secondary{background:var(--elev);color:var(--t2);border:1px solid var(--bdr)}.btn-secondary:hover{border-color:var(--bdrl);color:var(--t1)}
+.btn-danger{background:#7f1d1d;color:#fca5a5}.btn-danger:hover{background:#991b1b}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-icon{background:none;border:none;color:var(--t3);cursor:pointer;padding:6px;border-radius:6px;font-size:14px;transition:.15s}.btn-icon:hover{background:var(--hov);color:var(--t1)}
+
+/* ── LOGIN ── */
+#loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+#loginScreen.hidden{display:none}
+.login-card{background:var(--elev);border:1px solid var(--bdr);border-radius:20px;padding:44px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.login-logo{font-size:40px;margin-bottom:8px;text-align:center}
+.login-title{font-size:26px;font-weight:800;color:var(--acc);text-align:center;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--t3);text-align:center;margin-bottom:32px}
+.fg{margin-bottom:16px}
+.login-footer{margin-top:28px;text-align:center;font-size:10px;color:var(--t3);line-height:1.6}
+.alert-err{background:#3a1a1a;border:1px solid #7f2020;color:#ffaaaa;padding:10px 14px;border-radius:var(--r);font-size:12px;margin-bottom:14px}
+
+/* ── TOPBAR ── */
+#topbar{position:fixed;top:0;left:0;right:0;height:52px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;padding:0 16px;z-index:100}
+.tb-logo{font-size:18px;font-weight:800;color:var(--acc);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.tb-version{font-size:10px;color:var(--t3);font-weight:400;margin-left:2px}
+.tb-sep{width:1px;height:28px;background:var(--bdr);flex-shrink:0}
+.tb-nav{display:flex;align-items:center;gap:4px}
+.tb-nav button{background:none;border:none;color:var(--t2);cursor:pointer;padding:6px 8px;border-radius:6px;font-size:14px;transition:.15s}.tb-nav button:hover{background:var(--hov);color:var(--t1)}
+.tb-month{font-size:15px;font-weight:700;color:var(--t1);min-width:130px;text-align:center}
+.tb-views{display:flex;gap:4px}
+.tb-view-btn{background:none;border:1px solid var(--bdr);color:var(--t3);cursor:pointer;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;transition:.15s}
+.tb-view-btn.active,.tb-view-btn:hover{background:var(--accg);border-color:var(--acc);color:var(--acc)}
+.tb-spacer{flex:1}
+.tb-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.15s}.tb-user:hover{background:var(--hov)}
+.tb-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.tb-uname{font-size:12px;font-weight:600;color:var(--t2)}
+
+/* ── MAIN ── */
+#app{padding-top:52px;min-height:100vh;display:none}
+#app.visible{display:block}
+
+/* ── GANTT ── */
+#ganttView{overflow:hidden}
+.gantt-wrap{display:flex;height:calc(100vh - 52px);overflow:hidden}
+.gantt-left{width:180px;flex-shrink:0;border-right:1px solid var(--bdr);display:flex;flex-direction:column;background:var(--surf)}
+.gantt-corner{height:56px;display:flex;align-items:center;padding:0 16px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.gantt-resource-list{overflow-y:auto;flex:1}
+.gantt-resource-row{height:52px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:.15s}
+.gantt-resource-row:hover{background:var(--hov)}
+.res-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.res-name{font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.res-type-icon{font-size:11px;color:var(--t3);flex-shrink:0}
+.gantt-right{flex:1;overflow:auto;position:relative}
+.gantt-header{display:flex;height:56px;position:sticky;top:0;z-index:10;background:var(--surf);border-bottom:1px solid var(--bdr)}
+.gantt-day-header{width:38px;min-width:38px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--bdr);padding:4px 0;gap:1px}
+.gantt-day-header.today{background:var(--accg);border-color:var(--acc)}
+.day-num{font-size:13px;font-weight:700;color:var(--t1)}
+.day-name{font-size:9px;color:var(--t3);text-transform:uppercase}
+.gantt-day-header.today .day-num{color:var(--acc)}
+.gantt-row-wrap{position:relative}
+.gantt-body-row{display:flex;height:52px;border-bottom:1px solid var(--bdr);position:relative}
+.gantt-cell{width:38px;min-width:38px;flex-shrink:0;border-right:1px solid var(--bdr);height:100%;cursor:pointer;transition:.15s}
+.gantt-cell:hover{background:rgba(13,148,136,.08)}
+.gantt-cell.today{background:rgba(13,148,136,.05);border-color:var(--acc)}
+.gantt-bars{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.gantt-bar{position:absolute;height:34px;top:9px;border-radius:6px;cursor:pointer;pointer-events:all;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.gantt-bar:hover{filter:brightness(1.15);transform:scaleY(1.05);z-index:5}
+
+/* ── LIST VIEW ── */
+#listView{padding:20px;display:none}
+#listView.active{display:block}
+.rt-table{width:100%;border-collapse:collapse}
+.rt-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--bdr)}
+.rt-table td{padding:10px 12px;border-bottom:1px solid var(--bdr);font-size:12px;vertical-align:middle}
+.rt-table tr:hover td{background:var(--hov)}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase}
+.res-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.total-cell{font-weight:700;color:var(--acc)}
+.total-cell .extras-hint{font-size:10px;color:var(--t3);font-weight:400;display:block}
+
+/* ── EXTRAS ── */
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:6px}
+.catalog-card{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--r);padding:10px;cursor:pointer;transition:.15s;text-align:center;position:relative}
+.catalog-card:hover{border-color:var(--acc);background:var(--accg)}
+.catalog-card.added{border-color:var(--acc);background:var(--accg)}
+.catalog-card .cc-icon{font-size:20px;color:var(--acc);margin-bottom:4px}
+.catalog-card .cc-name{font-size:11px;font-weight:700;color:var(--t1);line-height:1.3;margin-bottom:2px}
+.catalog-card .cc-price{font-size:11px;color:var(--t3)}
+.catalog-card .cc-qty{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px}
+.catalog-card .cc-qty button{background:var(--elev);border:1px solid var(--bdr);color:var(--t1);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:700;line-height:1}
+.catalog-card .cc-qty span{font-size:13px;font-weight:700;color:var(--acc);min-width:16px}
+.catalog-cat-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px}
+.extras-selected{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.extra-sel-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;font-size:12px}
+.extra-sel-row .es-name{flex:1;font-weight:600;color:var(--t1)}
+.extra-sel-row .es-amt{color:var(--acc);font-weight:700;min-width:70px;text-align:right}
+.btn-rm-extra{background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:0 2px;line-height:1}
+.extras-total-row{background:var(--accg);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.extras-total-row .grand{font-size:16px;font-weight:800;color:var(--acc)}
+/* ── CATALOG MGMT MODAL ── */
+.cat-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)}
+.cat-icon-sel{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.cat-icon-opt{width:32px;height:32px;border-radius:6px;background:var(--bg);border:1px solid var(--bdr);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;transition:.15s}
+.cat-icon-opt.sel,.cat-icon-opt:hover{border-color:var(--acc);color:var(--acc);background:var(--accg)}
+
+/* ── SIDE PANEL ── */
+#sidePanel{position:fixed;top:52px;right:0;bottom:0;width:380px;background:var(--elev);border-left:1px solid var(--bdr);z-index:200;transform:translateX(100%);transition:transform .25s;overflow-y:auto;padding:24px}
+#sidePanel.open{transform:translateX(0)}
+#sidePanelOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199;display:none}
+#sidePanelOverlay.on{display:block}
+.sp-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.sp-title{font-size:17px;font-weight:800;color:var(--t1)}
+.sp-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--bdr)}
+.sp-section:last-child{border-bottom:none}
+.sp-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sp-value{font-size:13px;color:var(--t1);font-weight:500}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.on{display:flex}
+.modal{background:var(--elev);border:1px solid var(--bdr);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:800;color:var(--t1)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── FAB + TOOLBAR ── */
+.gantt-toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surf);border-bottom:1px solid var(--bdr)}
+.gantt-legend{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+#fabNew{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--acc);color:#fff;border:none;cursor:pointer;font-size:22px;box-shadow:0 4px 20px rgba(13,148,136,.5);transition:.2s;z-index:150}
+#fabNew:hover{background:var(--acc2);transform:scale(1.08)}
+
+/* ── RESOURCE PANEL ── */
+#resourcesPanel{position:fixed;top:52px;left:0;bottom:0;width:280px;background:var(--surf);border-right:1px solid var(--bdr);z-index:150;transform:translateX(-100%);transition:transform .25s;overflow-y:auto}
+#resourcesPanel.open{transform:translateX(0)}
+.rp-header{padding:16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
+.rp-title{font-size:14px;font-weight:700;color:var(--t1)}
+.rp-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);transition:.15s}
+.rp-item:hover{background:var(--hov)}
+
+/* ── NOTIFY ── */
+#notify{position:fixed;top:64px;right:16px;z-index:999;display:flex;flex-direction:column;gap:6px}
+.notif{background:var(--elev);border:1px solid var(--bdr);border-radius:8px;padding:10px 16px;font-size:12px;font-weight:600;animation:slideIn .2s ease;max-width:300px}
+.notif.ok{border-left:3px solid var(--acc);color:#6ee7b7}
+.notif.er{border-left:3px solid #ef4444;color:#fca5a5}
+.notif.wa{border-left:3px solid var(--pending);color:#fcd34d}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── USERS MODAL ── */
+.user-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)}
+.user-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.user-info{flex:1}
+.user-name{font-size:13px;font-weight:600;color:var(--t1)}
+.user-role{font-size:10px;color:var(--t3)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+/* ── FLATPICKR WRAP ── */
+.fp-wrap{display:flex}
+.fp-wrap input[data-input]{flex:1;border-radius:var(--r) 0 0 var(--r)!important;cursor:pointer}
+.fp-cal-btn{background:var(--elev);border:1px solid var(--bdr);border-left:none;border-radius:0 var(--r) var(--r) 0;color:var(--acc);cursor:pointer;padding:0 13px;font-size:14px;transition:.15s;flex-shrink:0;line-height:1}
+.fp-cal-btn:hover{background:var(--accg)}
+
+/* ── COLOR PICKER ── */
+.color-opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.color-opt{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.15s}
+.color-opt.sel,.color-opt:hover{border-color:#fff;transform:scale(1.15)}
+
+/* ── FOOTER ── */
+#mainFooter{text-align:center;padding:12px;font-size:10px;color:var(--t3);border-top:1px solid var(--bdr);margin-top:auto}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🗓</div>
+    <div class="login-title">Reserva Total</div>
+    <div class="login-sub">Sistema de Gestión de Reservas</div>
+    <div id="loginErr" class="alert-err" style="display:none"></div>
+    <div class="fg"><label>Usuario o Email</label><input id="lgUser" type="text" placeholder="admin" autocomplete="username"></div>
+    <div class="fg"><label>Contraseña</label><input id="lgPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Ingresar</button>
+    <div class="login-footer">Diseñado y programado por Durval Muñoz Codazzi<br>v2.4 · Reserva Total®</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-logo">
+      <i class="fas fa-calendar-alt"></i> Reserva Total
+      <span class="tb-version">v2.4</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-nav">
+      <button onclick="prevMonth()" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
+      <div class="tb-month" id="tbMonth">—</div>
+      <button onclick="nextMonth()" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
+      <button onclick="goToday()" title="Hoy" style="font-size:11px;font-weight:700;padding:4px 10px">HOY</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-views">
+      <button class="tb-view-btn active" id="vbGantt" onclick="setView('gantt')"><i class="fas fa-bars"></i> Grilla</button>
+      <button class="tb-view-btn" id="vbList" onclick="setView('list')"><i class="fas fa-list"></i> Lista</button>
+    </div>
+    <div class="tb-sep"></div>
+    <button class="btn-icon" onclick="toggleResourcesPanel()" title="Gestionar recursos"><i class="fas fa-bed"></i></button>
+    <button class="btn-icon" id="extrasBtn" onclick="openExtrasCatalogModal()" title="Catálogo de Extras" style="display:none"><i class="fas fa-concierge-bell"></i></button>
+    <button class="btn-icon" id="usersBtn" onclick="openUsersModal()" title="Usuarios" style="display:none"><i class="fas fa-users"></i></button>
+    <button class="btn-icon" id="smtpBtn" onclick="openSmtpModal()" title="Configuración SMTP" style="display:none"><i class="fas fa-cog"></i></button>
+    <div class="tb-spacer"></div>
+    <div class="tb-user" onclick="openUsersModal()">
+      <div class="tb-avatar" id="tbAvatar" style="background:#0d9488">A</div>
+      <span class="tb-uname" id="tbUname">—</span>
+    </div>
+    <button class="btn-icon" onclick="doLogout()" title="Cerrar sesión"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+
+  <!-- GANTT TOOLBAR -->
+  <div class="gantt-toolbar">
+    <div class="gantt-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--confirmed)"></div> Confirmada</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--pending)"></div> Pendiente</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--paid)"></div> Pagada</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--in_progress)"></div> En curso</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--completed)"></div> Finalizada</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openNewReservation()"><i class="fas fa-plus"></i> Nueva reserva</button>
+  </div>
+
+  <!-- GANTT VIEW -->
+  <div id="ganttView">
+    <div class="gantt-wrap">
+      <div class="gantt-left">
+        <div class="gantt-corner"><i class="fas fa-bed" style="margin-right:6px"></i> Recursos</div>
+        <div class="gantt-resource-list" id="ganttResources"></div>
+      </div>
+      <div class="gantt-right" id="ganttRight">
+        <div class="gantt-header" id="ganttHeader"></div>
+        <div id="ganttBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <table class="rt-table">
+      <thead>
+        <tr>
+          <th>Recurso</th><th>Huésped</th><th>Entrada</th><th>Salida</th>
+          <th>Duración</th><th>Total</th><th>Estado</th><th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="listBody"></tbody>
+    </table>
+    <div id="listEmpty" style="text-align:center;padding:40px;color:var(--t3);display:none">
+      <i class="fas fa-calendar-times" style="font-size:32px;margin-bottom:12px;display:block"></i>
+      No hay reservas para este mes
+    </div>
+  </div>
+
+  <div id="mainFooter">© 2026 Reserva Total · Diseñado y programado por Durval Muñoz Codazzi</div>
+</div>
+
+<!-- FAB -->
+<button id="fabNew" onclick="openNewReservation()" title="Nueva reserva">+</button>
+
+<!-- RESOURCES PANEL -->
+<div id="resourcesPanel">
+  <div class="rp-header">
+    <span class="rp-title"><i class="fas fa-bed"></i> Recursos</span>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-primary btn-sm" onclick="openResourceModal()"><i class="fas fa-plus"></i> Nuevo</button>
+      <button class="btn-icon" onclick="toggleResourcesPanel()"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  <div id="rpList"></div>
+</div>
+
+<!-- SIDE PANEL (reservation detail) -->
+<div id="sidePanelOverlay" onclick="closeSidePanel()"></div>
+<div id="sidePanel">
+  <div class="sp-header">
+    <div class="sp-title" id="spTitle">Detalle de reserva</div>
+    <button class="btn-icon" onclick="closeSidePanel()"><i class="fas fa-times"></i></button>
+  </div>
+  <div id="spContent"></div>
+</div>
+
+<!-- MODAL: NUEVA/EDITAR RESERVA -->
+<div class="modal-overlay" id="moReserva">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="moRTitle">Nueva Reserva</div>
+      <button class="btn-icon" onclick="closeMo('moReserva')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="fg">
+      <label>Recurso *</label>
+      <select id="mrResource"></select>
+    </div>
+    <div class="fg">
+      <label>Nombre del huésped *</label>
+      <input id="mrName" type="text" placeholder="Nombre completo">
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Email</label><input id="mrEmail" type="email" placeholder="email@ejemplo.com"></div>
+      <div class="fg"><label>Teléfono</label><input id="mrPhone" type="text" placeholder="+54 11 ..."></div>
+    </div>
+    <div class="fg"><label>DNI / Pasaporte</label><input id="mrDoc" type="text" placeholder="12345678"></div>
+    <div class="row2">
+      <div class="fg">
+        <label>Entrada *</label>
+        <div class="fp-wrap" id="fpInWrap">
+          <input id="mrCheckIn" type="text" placeholder="DD/MM/AAAA HH:MM" data-input readonly>
+          <button type="button" class="fp-cal-btn" data-toggle><i class="fas fa-calendar-alt"></i></button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Salida *</label>
+        <div class="fp-wrap" id="fpOutWrap">
+          <input id="mrCheckOut" type="text" placeholder="DD/MM/AAAA HH:MM" data-input readonly>
+          <button type="button" class="fp-cal-btn" data-toggle><i class="fas fa-calendar-alt"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="fg"><label>Adultos</label><input id="mrAdults" type="number" min="1" value="1"></div>
+      <div class="fg"><label>Niños</label><input id="mrChildren" type="number" min="0" value="0"></div>
+      <div class="fg">
+        <label>Precio alojamiento</label>
+        <input id="mrPrice" type="number" min="0" step="0.01" placeholder="0.00" oninput="updateExtrasTotal()">
+        <div id="priceCalcHint" style="display:none;font-size:10px;color:var(--t3);margin-top:3px">
+          <i class="fas fa-calculator" style="color:var(--acc)"></i> <span id="priceCalcText"></span>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label>Estado</label>
+        <select id="mrStatus">
+          <option value="confirmed">✅ Confirmada</option>
+          <option value="pending">🟡 Pendiente</option>
+          <option value="paid">💙 Pagada</option>
+          <option value="in_progress">🟣 En curso</option>
+          <option value="completed">⬜ Finalizada</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Forma de pago</label>
+        <select id="mrPayment">
+          <option value="cash">💵 Efectivo</option>
+          <option value="transfer">🏦 Transferencia</option>
+          <option value="mp">💳 MercadoPago</option>
+          <option value="card">💳 Tarjeta</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Extras / Servicios <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(clic para agregar)</span></label>
+      <div id="catalogGrid">
+        <div style="font-size:11px;color:var(--t3);padding:8px 0">Cargando catálogo...</div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addCustomExtra()">
+        <i class="fas fa-plus"></i> Extra personalizado
+      </button>
+      <div class="extras-selected" id="extrasSelected" style="display:none"></div>
+      <div class="extras-total-row" id="extrasTotal" style="display:none">
+        <div>
+          <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Total general</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px" id="extrasTotalBreak"></div>
+        </div>
+        <div class="grand" id="extrasTotalAmt"></div>
+      </div>
+    </div>
+    <div class="fg"><label>Notas para el huésped</label><textarea id="mrNotes" rows="2" placeholder="Información para el huésped..."></textarea></div>
+    <div class="fg"><label>Notas internas</label><textarea id="mrInternal" rows="2" placeholder="Solo visible para el equipo..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMo('moReserva')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveReservation()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NUEVO/EDITAR RECURSO -->
+<div class="modal-overlay" id="moResource">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="moResTitle">Nuevo Recurso</div>
+      <button class="btn-icon" onclick="closeMo('moResource')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="fg"><label>Nombre *</label><input id="resName" type="text" placeholder="Ej: Habitación 101"></div>
+    <div class="fg"><label>Descripción</label><textarea id="resDesc" rows="2" placeholder="Descripción del recurso..."></textarea></div>
+    <div class="fg">
+      <label>Tipo</label>
+      <select id="resType">
+        <option value="room">🛏 Habitación</option>
+        <option value="cabin">🏠 Cabaña</option>
+        <option value="vehicle">🚗 Vehículo</option>
+        <option value="tool">🔧 Herramienta</option>
+        <option value="other">📦 Otro</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Precio por día</label><input id="resPriceDay" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label>Precio por hora (opcional)</label><input id="resPriceHour" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="fg"><label>Capacidad (personas)</label><input id="resCap" type="number" min="1" value="1"></div>
+    <div class="fg">
+      <label>Color identificador</label>
+      <div class="color-opts" id="resColorOpts"></div>
+      <input type="hidden" id="resColor" value="#0d9488">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMo('moResource')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveResource()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: USUARIOS -->
+<div class="modal-overlay" id="moUsers">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">Gestión de Usuarios</div>
+      <button class="btn-icon" onclick="closeMo('moUsers')"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="usersList" style="margin-bottom:20px"></div>
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--acc);padding:8px 0">+ Agregar nuevo usuario</summary>
+      <div style="margin-top:12px;padding:16px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div class="row2">
+          <div class="fg"><label>Usuario *</label><input id="nuUser" type="text" placeholder="usuario123"></div>
+          <div class="fg"><label>Nombre completo *</label><input id="nuName" type="text" placeholder="Nombre"></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>Email</label><input id="nuEmail" type="email" placeholder="email@..."></div>
+          <div class="fg"><label>Teléfono</label><input id="nuPhone" type="text" placeholder="+54..."></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>Contraseña *</label><input id="nuPass" type="password" placeholder="••••••••"></div>
+          <div class="fg"><label>Rol</label><select id="nuRole"><option value="member">Miembro</option><option value="admin">Admin</option></select></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="createUser()"><i class="fas fa-user-plus"></i> Crear usuario</button>
+      </div>
+    </details>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMo('moUsers')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CATÁLOGO DE EXTRAS -->
+<div class="modal-overlay" id="moExtrasCatalog">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-concierge-bell" style="color:var(--acc)"></i> Catálogo de Extras</div>
+      <button class="btn-icon" onclick="closeMo('moExtrasCatalog')"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="catalogMgmtList" style="margin-bottom:16px;max-height:300px;overflow-y:auto"></div>
+    <details id="newExtraDetails">
+      <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--acc);padding:8px 0;list-style:none;display:flex;align-items:center;gap:6px">
+        <i class="fas fa-plus-circle"></i> Agregar nuevo extra al catálogo
+      </summary>
+      <div style="margin-top:12px;padding:16px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div class="row2">
+          <div class="fg"><label>Nombre *</label><input id="neNombre" type="text" placeholder="Ej: Cena para 2"></div>
+          <div class="fg"><label>Categoría</label><input id="neCategoria" type="text" placeholder="Gastronomía" list="catList">
+            <datalist id="catList"></datalist>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>Precio unitario</label><input id="nePrecio" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="fg"><label>Descripción</label><input id="neDesc" type="text" placeholder="Detalle opcional"></div>
+        </div>
+        <div class="fg">
+          <label>Ícono</label>
+          <div class="cat-icon-sel" id="iconSel"></div>
+          <input type="hidden" id="neIcono" value="fa-star">
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="saveCatalogExtra()"><i class="fas fa-save"></i> Guardar en catálogo</button>
+        </div>
+      </div>
+    </details>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMo('moExtrasCatalog')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIGURACIÓN SMTP -->
+<div class="modal-overlay" id="moSmtp">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-cog" style="color:var(--acc)"></i> Configuración de Email (SMTP)</div>
+      <button class="btn-icon" onclick="closeMo('moSmtp')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="padding:0 4px">
+      <p style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">
+        Usá una <strong>Contraseña de Aplicación de Google</strong>: Google Account → Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones → Crear una nueva (nombre: "Reserva Total").
+      </p>
+      <div class="row2">
+        <div class="fg"><label>Servidor SMTP</label><input id="smtpHost" type="text" placeholder="smtp.gmail.com"></div>
+        <div class="fg"><label>Puerto</label><input id="smtpPort" type="number" placeholder="587" style="max-width:100px"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Usuario (email)</label><input id="smtpUser" type="email" placeholder="tu@gmail.com"></div>
+        <div class="fg"><label>Contraseña de App</label><input id="smtpPass" type="password" placeholder="••••••••••••••••"></div>
+      </div>
+      <div class="fg"><label>Nombre remitente</label><input id="smtpFromName" type="text" placeholder="Reserva Total"></div>
+      <div class="fg" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <input id="smtpEnabled" type="checkbox" style="width:auto;accent-color:var(--acc)">
+        <label style="margin:0;text-transform:none;font-size:13px;font-weight:600;color:var(--t1)">Habilitar envío de emails</label>
+      </div>
+      <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Probar configuración</div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin-bottom:0"><input id="smtpTestTo" type="email" placeholder="Enviar prueba a..."></div>
+          <button class="btn btn-secondary btn-sm" onclick="testSmtp()" id="smtpTestBtn"><i class="fas fa-paper-plane"></i> Enviar prueba</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMo('moSmtp')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSmtp()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFY -->
+<div id="notify"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────
+let TOKEN = localStorage.getItem('rt_token');
+let CURRENT_USER = null;
+let RESOURCES = [];
+let RESERVATIONS = [];
+let YEAR = new Date().getFullYear();
+let MONTH = new Date().getMonth() + 1; // 1-12
+let VIEW = 'gantt';
+let editReservationId = null;
+let editResourceId = null;
+
+const DAY_W = 38; // px per day column
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const STATUS_LABELS = {confirmed:'Confirmada',pending:'Pendiente',paid:'Pagada',in_progress:'En curso',completed:'Finalizada',cancelled:'Cancelada'};
+const STATUS_COLORS = {confirmed:'var(--confirmed)',pending:'var(--pending)',paid:'var(--paid)',in_progress:'var(--in_progress)',completed:'var(--completed)',cancelled:'var(--cancelled)'};
+const TYPE_ICONS = {room:'fa-bed',cabin:'fa-house',vehicle:'fa-car',tool:'fa-wrench',other:'fa-box'};
+const COLORS = ['#0d9488','#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e','#ef4444','#6366f1','#f97316','#06b6d4'];
+
+// ── API ───────────────────────────────────────────────────────────────────
+const BASE = (() => {
+  const p = window.location.pathname.replace(/\/index\.html$/, '');
+  return window.location.origin + p + '/api/';
+})();
+
+async function api(endpoint, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BASE + endpoint, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+  return data;
+}
+
+// ── NOTIFY ────────────────────────────────────────────────────────────────
+function notify(msg, type = 'ok') {
+  const d = document.getElementById('notify');
+  const n = document.createElement('div');
+  n.className = 'notif ' + type;
+  n.textContent = msg;
+  d.appendChild(n);
+  setTimeout(() => n.remove(), 3500);
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const user = document.getElementById('lgUser').value.trim();
+  const pass = document.getElementById('lgPass').value;
+  const err  = document.getElementById('loginErr');
+  err.style.display = 'none';
+  if (!user || !pass) { err.textContent = 'Completá usuario y contraseña'; err.style.display = 'block'; return; }
+  try {
+    const d = await api('auth.php?action=login', 'POST', { username: user, password: pass });
+    TOKEN = d.token;
+    CURRENT_USER = d.user;
+    localStorage.setItem('rt_token', TOKEN);
+    afterLogin();
+  } catch(e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+}
+
+document.getElementById('lgPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+async function doLogout() {
+  try { await api('auth.php?action=logout', 'POST'); } catch(e) {}
+  TOKEN = null; CURRENT_USER = null;
+  localStorage.removeItem('rt_token');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+}
+
+async function checkAuth() {
+  if (!TOKEN) return showLogin();
+  try {
+    const d = await api('auth.php?action=me');
+    CURRENT_USER = d.user;
+    afterLogin();
+  } catch(e) { showLogin(); }
+}
+
+function showLogin() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+}
+
+async function afterLogin() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  // Update topbar
+  const av = document.getElementById('tbAvatar');
+  const un = document.getElementById('tbUname');
+  av.textContent = (CURRENT_USER.name||'A')[0].toUpperCase();
+  av.style.background = CURRENT_USER.color || '#0d9488';
+  un.textContent = CURRENT_USER.name || CURRENT_USER.username;
+  if (CURRENT_USER.role === 'admin') {
+    document.getElementById('usersBtn').style.display = '';
+    document.getElementById('extrasBtn').style.display = '';
+    document.getElementById('smtpBtn').style.display = '';
+  }
+  await loadData();
+}
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const [rRes, resData] = await Promise.all([
+      api('resources.php?action=list'),
+      api(`reservations.php?action=list&year=${YEAR}&month=${MONTH}`),
+      loadExtrasCatalog(),
+    ]);
+    RESOURCES = rRes.resources || [];
+    RESERVATIONS = resData.reservations || [];
+    updateMonthLabel();
+    renderGantt();
+    renderList();
+    renderResourcePanel();
+    populateResourceSelect();
+  } catch(e) {
+    notify('Error cargando datos: ' + e.message, 'er');
+  }
+}
+
+// ── MONTH NAV ─────────────────────────────────────────────────────────────
+function updateMonthLabel() {
+  document.getElementById('tbMonth').textContent = MONTHS_ES[MONTH-1] + ' ' + YEAR;
+}
+function prevMonth() {
+  MONTH--; if(MONTH<1){MONTH=12;YEAR--;}
+  loadData();
+}
+function nextMonth() {
+  MONTH++; if(MONTH>12){MONTH=1;YEAR++;}
+  loadData();
+}
+function goToday() {
+  const n = new Date();
+  YEAR = n.getFullYear(); MONTH = n.getMonth()+1;
+  loadData();
+}
+
+// ── VIEW ──────────────────────────────────────────────────────────────────
+function setView(v) {
+  VIEW = v;
+  document.getElementById('ganttView').style.display = v==='gantt' ? '' : 'none';
+  document.getElementById('listView').classList.toggle('active', v==='list');
+  document.getElementById('vbGantt').classList.toggle('active', v==='gantt');
+  document.getElementById('vbList').classList.toggle('active', v==='list');
+}
+
+// ── GANTT RENDER ──────────────────────────────────────────────────────────
+function renderGantt() {
+  const daysInMonth = new Date(YEAR, MONTH, 0).getDate();
+  const today = new Date();
+  const todayD = today.getFullYear()===YEAR && (today.getMonth()+1)===MONTH ? today.getDate() : -1;
+
+  // Header
+  const hdr = document.getElementById('ganttHeader');
+  hdr.innerHTML = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(YEAR, MONTH-1, d);
+    const cell = document.createElement('div');
+    cell.className = 'gantt-day-header' + (d===todayD?' today':'');
+    cell.innerHTML = `<div class="day-num">${d}</div><div class="day-name">${DAYS_ES[dt.getDay()]}</div>`;
+    hdr.appendChild(cell);
+  }
+
+  // Resource rows (left)
+  const rl = document.getElementById('ganttResources');
+  rl.innerHTML = RESOURCES.length ? '' : '<div style="padding:20px;color:var(--t3);font-size:12px;text-align:center">Sin recursos.<br>Agregá uno →</div>';
+  RESOURCES.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'gantt-resource-row';
+    row.innerHTML = `<div class="res-dot" style="background:${r.color}"></div>
+      <span class="res-name">${esc(r.name)}</span>
+      <i class="fas ${TYPE_ICONS[r.type]||'fa-box'} res-type-icon"></i>`;
+    row.onclick = () => openResourceModal(r.id);
+    rl.appendChild(row);
+  });
+
+  // Body rows
+  const body = document.getElementById('ganttBody');
+  body.innerHTML = '';
+  RESOURCES.forEach(r => {
+    const wrap = document.createElement('div');
+    wrap.className = 'gantt-row-wrap';
+    wrap.style.height = '52px';
+
+    // Day cells
+    const rowEl = document.createElement('div');
+    rowEl.className = 'gantt-body-row';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'gantt-cell' + (d===todayD?' today':'');
+      const dateStr = `${YEAR}-${String(MONTH).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      cell.onclick = () => openNewReservation(r.id, dateStr);
+      rowEl.appendChild(cell);
+    }
+    wrap.appendChild(rowEl);
+
+    // Reservation bars
+    const barsEl = document.createElement('div');
+    barsEl.className = 'gantt-bars';
+    barsEl.style.width = (daysInMonth * DAY_W) + 'px';
+
+    const myRes = RESERVATIONS.filter(rv => rv.resource_id == r.id && rv.status !== 'cancelled');
+    myRes.forEach(rv => {
+      const ciDate = new Date(rv.check_in.replace(' ','T'));
+      const coDate = new Date(rv.check_out.replace(' ','T'));
+
+      // Clamp to month
+      const monthStart = new Date(YEAR, MONTH-1, 1);
+      const monthEnd   = new Date(YEAR, MONTH, 0, 23, 59, 59);
+      const startCl = ciDate < monthStart ? monthStart : ciDate;
+      const endCl   = coDate > monthEnd   ? monthEnd   : coDate;
+
+      const startDay = startCl.getDate();
+      const endDay   = endCl.getDate();
+      const durDays  = Math.max(1, endDay - startDay + 1);
+
+      const barColor = rv.status === 'confirmed' ? (r.color || 'var(--confirmed)') : STATUS_COLORS[rv.status] || 'var(--confirmed)';
+      const left = (startDay - 1) * DAY_W + 2;
+      const width = durDays * DAY_W - 4;
+
+      const bar = document.createElement('div');
+      bar.className = 'gantt-bar';
+      bar.style.cssText = `left:${left}px;width:${width}px;background:${barColor}`;
+      bar.textContent = rv.guest_name;
+      bar.title = `${rv.guest_name} · ${fmtDate(rv.check_in)} → ${fmtDate(rv.check_out)}`;
+      bar.onclick = (e) => { e.stopPropagation(); openReservationDetail(rv.id); };
+      barsEl.appendChild(bar);
+    });
+
+    wrap.appendChild(barsEl);
+    body.appendChild(wrap);
+  });
+
+  // Scroll to today
+  if (todayD > 0) {
+    const right = document.getElementById('ganttRight');
+    right.scrollLeft = Math.max(0, (todayD - 4) * DAY_W);
+  }
+}
+
+// ── LIST RENDER ───────────────────────────────────────────────────────────
+function renderList() {
+  const tbody = document.getElementById('listBody');
+  const empty = document.getElementById('listEmpty');
+  const active = RESERVATIONS.filter(r => r.status !== 'cancelled');
+  tbody.innerHTML = '';
+  empty.style.display = active.length ? 'none' : '';
+  active.forEach(rv => {
+    const ci = new Date(rv.check_in.replace(' ','T'));
+    const co = new Date(rv.check_out.replace(' ','T'));
+    const dur = durLabel(ci, co);
+    const sc = STATUS_COLORS[rv.status] || '#888';
+    const sl = STATUS_LABELS[rv.status] || rv.status;
+    const rc = rv.resource_color || '#0d9488';
+    const grandTotal = parseFloat(rv.grand_total ?? rv.total_price ?? 0);
+    const extTotal   = parseFloat(rv.extras_total ?? 0);
+    const basePrice  = parseFloat(rv.total_price ?? 0);
+    let totalHtml = '—';
+    if (grandTotal > 0) {
+      totalHtml = `<span class="total-cell">$${fmt(grandTotal)}`;
+      if (extTotal > 0) totalHtml += `<span class="extras-hint">aloj. $${fmt(basePrice)} + extras $${fmt(extTotal)}</span>`;
+      totalHtml += '</span>';
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="res-chip" style="background:${rc}22;color:${rc}">
+        <span style="width:8px;height:8px;border-radius:50%;background:${rc};flex-shrink:0;display:inline-block"></span>
+        ${esc(rv.resource_name||'—')}
+      </span></td>
+      <td><strong>${esc(rv.guest_name)}</strong>${rv.guest_phone?`<br><span style="font-size:10px;color:var(--t3)">${esc(rv.guest_phone)}</span>`:''}
+      </td>
+      <td>${fmtDate(rv.check_in)}</td>
+      <td>${fmtDate(rv.check_out)}</td>
+      <td>${dur}</td>
+      <td>${totalHtml}</td>
+      <td><span class="status-badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-icon" onclick="openReservationDetail(${rv.id})" title="Ver detalle"><i class="fas fa-eye"></i></button>
+        <button class="btn-icon" onclick="openEditReservation(${rv.id})" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="btn-icon" onclick="printReservation(${rv.id})" title="Imprimir comprobante"><i class="fas fa-print"></i></button>
+        <button class="btn-icon" onclick="sendReservationSummary(${rv.id},'${esc(rv.guest_email||'')}')" title="${rv.guest_email ? 'Enviar al cliente' : 'Sin email del huésped'}" ${rv.guest_email ? '' : 'disabled style="opacity:.3;cursor:not-allowed"'}><i class="fas fa-paper-plane"></i></button>
+        <button class="btn-icon" style="color:#f87171" onclick="cancelReservation(${rv.id})" title="Cancelar"><i class="fas fa-ban"></i></button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── RESERVATION DETAIL ────────────────────────────────────────────────────
+async function openReservationDetail(id) {
+  const rv = RESERVATIONS.find(r => r.id == id);
+  if (!rv) return;
+  const r = RESOURCES.find(x => x.id == rv.resource_id);
+  const ci = new Date(rv.check_in.replace(' ','T'));
+  const co = new Date(rv.check_out.replace(' ','T'));
+  const sc = STATUS_COLORS[rv.status] || '#888';
+  const sl = STATUS_LABELS[rv.status] || rv.status;
+
+  document.getElementById('spTitle').textContent = rv.guest_name;
+  document.getElementById('spContent').innerHTML = `
+    <div class="sp-section">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${rv.resource_color||'#0d9488'}"></div>
+        <span style="font-size:15px;font-weight:700">${esc(rv.resource_name||'—')}</span>
+      </div>
+      <span class="status-badge" style="background:${sc}22;color:${sc};font-size:12px;padding:4px 14px">${sl}</span>
+    </div>
+    <div class="sp-section sp-grid">
+      <div><div class="sp-label">Entrada</div><div class="sp-value">${fmtDateFull(rv.check_in)}</div></div>
+      <div><div class="sp-label">Salida</div><div class="sp-value">${fmtDateFull(rv.check_out)}</div></div>
+      <div><div class="sp-label">Duración</div><div class="sp-value">${durLabel(ci,co)}</div></div>
+      <div><div class="sp-label">Personas</div><div class="sp-value">${rv.adults||1} adulto(s)${rv.children>0?' + '+rv.children+' niño(s)':''}</div></div>
+    </div>
+    ${rv.guest_email||rv.guest_phone||rv.guest_doc ? `
+    <div class="sp-section">
+      <div class="sp-label" style="margin-bottom:8px">Datos del huésped</div>
+      ${rv.guest_email ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-envelope" style="width:16px"></i> ${esc(rv.guest_email)}</div>` : ''}
+      ${rv.guest_phone ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-phone" style="width:16px"></i> ${esc(rv.guest_phone)}</div>` : ''}
+      ${rv.guest_doc   ? `<div style="font-size:12px;color:var(--t2)"><i class="fas fa-id-card" style="width:16px"></i> ${esc(rv.guest_doc)}</div>` : ''}
+    </div>` : ''}
+    <div class="sp-section">
+      <div class="sp-grid" style="margin-bottom:8px">
+        <div><div class="sp-label">Pago</div><div class="sp-value">${payLabel(rv.payment_method)}</div></div>
+        <div><div class="sp-label">Estado pago</div><div class="sp-value">${rv.status==='paid'?'✅ Pagado':rv.status==='pending'?'⏳ Pendiente':'—'}</div></div>
+      </div>
+      ${(() => {
+        const base  = parseFloat(rv.total_price||0);
+        const extras = rv.extras || [];
+        const extAmt = extras.reduce((s,ex)=>s+parseFloat(ex.price||0)*parseInt(ex.qty||1),0);
+        const grand  = base + extAmt;
+        let html = '';
+        if (base > 0) html += `<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:4px"><span>Alojamiento</span><span>$${fmt(base)}</span></div>`;
+        extras.forEach(ex => {
+          const sub = parseFloat(ex.price||0)*parseInt(ex.qty||1);
+          html += `<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:4px"><span>${esc(ex.name)}${ex.qty>1?' ×'+ex.qty:''}</span><span>$${fmt(sub)}</span></div>`;
+        });
+        if (grand > 0) html += `<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:var(--acc);border-top:1px solid var(--bdr);padding-top:8px;margin-top:4px"><span>Total</span><span>$${fmt(grand)}</span></div>`;
+        return html || '<div style="font-size:12px;color:var(--t3)">Sin precio cargado</div>';
+      })()}
+    </div>
+    ${rv.notes ? `<div class="sp-section"><div class="sp-label">Notas</div><div class="sp-value" style="font-size:12px;color:var(--t2)">${esc(rv.notes)}</div></div>` : ''}
+    ${rv.internal_notes ? `<div class="sp-section"><div class="sp-label">Notas internas</div><div class="sp-value" style="font-size:12px;color:var(--t2)">${esc(rv.internal_notes)}</div></div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-secondary btn-sm" onclick="openEditReservation(${rv.id})"><i class="fas fa-edit"></i> Editar</button>
+      <button class="btn btn-secondary btn-sm" onclick="printReservation(${rv.id})"><i class="fas fa-print"></i> Imprimir</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendReservationSummary(${rv.id},'${esc(rv.guest_email||'')}')" ${rv.guest_email ? '' : 'disabled title="Sin email del huésped"'} style="${rv.guest_email ? '' : 'opacity:.4;cursor:not-allowed'}"><i class="fas fa-paper-plane"></i> Enviar al cliente</button>
+      <button class="btn btn-danger btn-sm" onclick="cancelReservation(${rv.id})"><i class="fas fa-ban"></i> Cancelar</button>
+    </div>
+  `;
+  openSidePanel();
+}
+
+function openSidePanel() {
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('sidePanelOverlay').classList.add('on');
+}
+function closeSidePanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('sidePanelOverlay').classList.remove('on');
+}
+
+// ── NEW / EDIT RESERVATION ────────────────────────────────────────────────
+function openNewReservation(resourceId = null, dateStr = null) {
+  editReservationId = null;
+  document.getElementById('moRTitle').textContent = 'Nueva Reserva';
+  document.getElementById('mrName').value = '';
+  document.getElementById('mrEmail').value = '';
+  document.getElementById('mrPhone').value = '';
+  document.getElementById('mrDoc').value = '';
+  document.getElementById('mrAdults').value = 1;
+  document.getElementById('mrChildren').value = 0;
+  document.getElementById('mrPrice').value = '';
+  document.getElementById('mrNotes').value = '';
+  document.getElementById('mrInternal').value = '';
+  document.getElementById('mrStatus').value = 'confirmed';
+  document.getElementById('mrPayment').value = 'cash';
+  calculatedPrice = 0;
+
+  if (fpIn) fpIn.clear();
+  if (fpOut) fpOut.clear();
+  document.getElementById('priceCalcHint').style.display = 'none';
+  extrasData = [];
+  renderCatalogGrid();
+  renderExtrasSelected();
+
+  if (resourceId) {
+    document.getElementById('mrResource').value = resourceId;
+  }
+  if (dateStr) {
+    const [yy,mm,dd] = dateStr.split('-');
+    fpIn  && fpIn.setDate(`${dd}/${mm}/${yy} 14:00`, true);
+    const nextDay = new Date(dateStr + 'T12:00');
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nd = nextDay, ndd = String(nd.getDate()).padStart(2,'0'), nmm = String(nd.getMonth()+1).padStart(2,'0'), nyy = nd.getFullYear();
+    fpOut && fpOut.setDate(`${ndd}/${nmm}/${nyy} 12:00`, true);
+    recalcPrice();
+  }
+  openMo('moReserva');
+}
+
+async function openEditReservation(id) {
+  const rv = RESERVATIONS.find(r => r.id == id);
+  if (!rv) return;
+  editReservationId = id;
+  closeSidePanel();
+  document.getElementById('moRTitle').textContent = 'Editar Reserva';
+  document.getElementById('mrResource').value = rv.resource_id;
+  document.getElementById('mrName').value = rv.guest_name || '';
+  document.getElementById('mrEmail').value = rv.guest_email || '';
+  document.getElementById('mrPhone').value = rv.guest_phone || '';
+  document.getElementById('mrDoc').value = rv.guest_doc || '';
+  document.getElementById('priceCalcHint').style.display = 'none';
+  loadExtrasFromData(rv.extras || []);
+  renderCatalogGrid();
+  // Parse MySQL datetime → dd/mm/yyyy HH:MM for Flatpickr
+  const parseMySQLtoFP = s => {
+    if (!s) return '';
+    const [date, time] = s.split(' ');
+    const [yy,mm,dd] = date.split('-');
+    return `${dd}/${mm}/${yy} ${(time||'00:00').slice(0,5)}`;
+  };
+  if (fpIn)  fpIn.setDate(parseMySQLtoFP(rv.check_in), true);
+  if (fpOut) fpOut.setDate(parseMySQLtoFP(rv.check_out), true);
+  document.getElementById('mrAdults').value = rv.adults || 1;
+  document.getElementById('mrChildren').value = rv.children || 0;
+  document.getElementById('mrPrice').value = rv.total_price || '';
+  document.getElementById('mrStatus').value = rv.status || 'confirmed';
+  document.getElementById('mrPayment').value = rv.payment_method || 'cash';
+  document.getElementById('mrNotes').value = rv.notes || '';
+  document.getElementById('mrInternal').value = rv.internal_notes || '';
+  openMo('moReserva');
+}
+
+function fpToMySQL(s) {
+  // Converts "28/05/2026 14:00" → "2026-05-28 14:00:00"
+  if (!s) return '';
+  const [datePart, timePart] = s.split(' ');
+  const [dd, mm, yy] = datePart.split('/');
+  return `${yy}-${mm}-${dd} ${timePart||'00:00'}:00`;
+}
+
+async function saveReservation() {
+  const body = {
+    resource_id:    parseInt(document.getElementById('mrResource').value),
+    guest_name:     document.getElementById('mrName').value.trim(),
+    guest_email:    document.getElementById('mrEmail').value.trim(),
+    guest_phone:    document.getElementById('mrPhone').value.trim(),
+    guest_doc:      document.getElementById('mrDoc').value.trim(),
+    check_in:       fpToMySQL(document.getElementById('mrCheckIn').value),
+    check_out:      fpToMySQL(document.getElementById('mrCheckOut').value),
+    adults:         parseInt(document.getElementById('mrAdults').value) || 1,
+    children:       parseInt(document.getElementById('mrChildren').value) || 0,
+    total_price:    parseFloat(document.getElementById('mrPrice').value) || 0,
+    status:         document.getElementById('mrStatus').value,
+    payment_method: document.getElementById('mrPayment').value,
+    notes:          document.getElementById('mrNotes').value,
+    internal_notes: document.getElementById('mrInternal').value,
+    extras:         getExtrasPayload(),
+  };
+  if (!body.guest_name) { notify('El nombre del huésped es requerido', 'er'); return; }
+  if (!body.check_in || !body.check_out) { notify('Ingresá las fechas de entrada y salida', 'er'); return; }
+  try {
+    if (editReservationId) {
+      await api('reservations.php?action=update&id=' + editReservationId, 'PUT', body);
+      notify('Reserva actualizada', 'ok');
+    } else {
+      await api('reservations.php?action=create', 'POST', body);
+      notify('Reserva creada', 'ok');
+    }
+    closeMo('moReserva');
+    await loadData();
+  } catch(e) {
+    notify(e.message, 'er');
+  }
+}
+
+async function cancelReservation(id) {
+  if (!confirm('¿Cancelar esta reserva?')) return;
+  try {
+    await api('reservations.php?action=cancel&id=' + id, 'DELETE');
+    notify('Reserva cancelada', 'wa');
+    closeSidePanel();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+// ── RESOURCES ─────────────────────────────────────────────────────────────
+function renderResourcePanel() {
+  const el = document.getElementById('rpList');
+  el.innerHTML = RESOURCES.length ? '' : '<div style="padding:20px;color:var(--t3);font-size:12px;text-align:center">No hay recursos aún</div>';
+  RESOURCES.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'rp-item';
+    div.innerHTML = `
+      <div style="width:10px;height:10px;border-radius:50%;background:${r.color};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.name)}</div>
+        <div style="font-size:10px;color:var(--t3)">${typeLabel(r.type)} · $${fmt(r.price_per_day||0)}/día</div>
+      </div>
+      <button class="btn-icon" onclick="openResourceModal(${r.id})"><i class="fas fa-edit"></i></button>`;
+    el.appendChild(div);
+  });
+}
+
+function populateResourceSelect() {
+  const sel = document.getElementById('mrResource');
+  sel.innerHTML = '<option value="">— Seleccioná un recurso —</option>';
+  RESOURCES.forEach(r => {
+    sel.innerHTML += `<option value="${r.id}">${typeLabel(r.type)} ${esc(r.name)}</option>`;
+  });
+  sel.onchange = () => recalcPrice(true);
+}
+
+function openResourceModal(id = null) {
+  editResourceId = id || null;
+  const r = id ? RESOURCES.find(x => x.id == id) : null;
+  document.getElementById('moResTitle').textContent = r ? 'Editar Recurso' : 'Nuevo Recurso';
+  document.getElementById('resName').value = r ? r.name : '';
+  document.getElementById('resDesc').value = r ? (r.description||'') : '';
+  document.getElementById('resType').value = r ? (r.type||'room') : 'room';
+  document.getElementById('resPriceDay').value = r ? (r.price_per_day||'') : '';
+  document.getElementById('resPriceHour').value = r ? (r.price_per_hour||'') : '';
+  document.getElementById('resCap').value = r ? (r.capacity||1) : 1;
+  document.getElementById('resColor').value = r ? (r.color||'#0d9488') : '#0d9488';
+  renderColorOpts(r ? r.color : '#0d9488');
+  openMo('moResource');
+}
+
+function renderColorOpts(selected) {
+  const el = document.getElementById('resColorOpts');
+  el.innerHTML = COLORS.map(c => `
+    <div class="color-opt${c===selected?' sel':''}" style="background:${c}" onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+
+function selectColor(c) {
+  document.getElementById('resColor').value = c;
+  renderColorOpts(c);
+}
+
+async function saveResource() {
+  const body = {
+    name:            document.getElementById('resName').value.trim(),
+    description:     document.getElementById('resDesc').value.trim(),
+    type:            document.getElementById('resType').value,
+    price_per_day:   parseFloat(document.getElementById('resPriceDay').value) || 0,
+    price_per_hour:  document.getElementById('resPriceHour').value !== '' ? parseFloat(document.getElementById('resPriceHour').value) : null,
+    capacity:        parseInt(document.getElementById('resCap').value) || 1,
+    color:           document.getElementById('resColor').value,
+  };
+  if (!body.name) { notify('El nombre es requerido', 'er'); return; }
+  try {
+    if (editResourceId) {
+      await api('resources.php?action=update&id=' + editResourceId, 'PUT', body);
+      notify('Recurso actualizado', 'ok');
+    } else {
+      await api('resources.php?action=create', 'POST', body);
+      notify('Recurso creado', 'ok');
+    }
+    closeMo('moResource');
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function toggleResourcesPanel() {
+  document.getElementById('resourcesPanel').classList.toggle('open');
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────────
+async function openUsersModal() {
+  if (CURRENT_USER.role !== 'admin') return;
+  try {
+    const d = await api('users.php?action=list');
+    const ul = document.getElementById('usersList');
+    ul.innerHTML = '';
+    (d.users || []).forEach(u => {
+      const div = document.createElement('div');
+      div.className = 'user-row';
+      div.innerHTML = `
+        <div class="user-av" style="background:${u.color||'#0d9488'}">${(u.name||'U')[0].toUpperCase()}</div>
+        <div class="user-info">
+          <div class="user-name">${esc(u.name)} <span style="font-size:10px;color:var(--t3)">(${u.username})</span></div>
+          <div class="user-role">${u.role==='admin'?'👑 Admin':'👤 Miembro'} ${u.email?'· '+u.email:''}</div>
+        </div>
+        ${u.id != CURRENT_USER.id ? `<button class="btn-icon" style="color:#f87171" onclick="deleteUser(${u.id},'${esc(u.name)}')"><i class="fas fa-trash"></i></button>` : ''}`;
+      ul.appendChild(div);
+    });
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+  openMo('moUsers');
+}
+
+async function createUser() {
+  const body = {
+    username: document.getElementById('nuUser').value.trim(),
+    name:     document.getElementById('nuName').value.trim(),
+    email:    document.getElementById('nuEmail').value.trim(),
+    phone:    document.getElementById('nuPhone').value.trim(),
+    password: document.getElementById('nuPass').value,
+    role:     document.getElementById('nuRole').value,
+  };
+  if (!body.username || !body.name || !body.password) { notify('Usuario, nombre y contraseña son requeridos', 'er'); return; }
+  try {
+    await api('users.php?action=create', 'POST', body);
+    notify('Usuario creado', 'ok');
+    ['nuUser','nuName','nuEmail','nuPhone','nuPass'].forEach(id => document.getElementById(id).value='');
+    openUsersModal();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`¿Eliminar al usuario "${name}"?`)) return;
+  try {
+    await api('users.php?action=delete&id=' + id, 'DELETE');
+    notify('Usuario eliminado', 'wa');
+    openUsersModal();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+// ── MODAL HELPERS ─────────────────────────────────────────────────────────
+function openMo(id) { document.getElementById(id).classList.add('on'); }
+function closeMo(id) { document.getElementById(id).classList.remove('on'); }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['moReserva','moResource','moUsers','moExtrasCatalog'].forEach(m => {
+      if (document.getElementById(m).classList.contains('on')) closeMo(m);
+    });
+    closeSidePanel();
+  }
+});
+
+// ── FORMAT HELPERS ────────────────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Formato monetario: separador de miles punto, decimal coma (es-AR)
+function fmt(n) {
+  const num = parseFloat(n) || 0;
+  const hasDecimals = num % 1 !== 0;
+  const str = hasDecimals ? num.toFixed(2) : num.toFixed(0);
+  const parts = str.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return hasDecimals ? parts[0] + ',' + parts[1] : parts[0];
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d.replace(' ','T'));
+  return dt.toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function fmtDateFull(d) {
+  if (!d) return '—';
+  const dt = new Date(d.replace(' ','T'));
+  return dt.toLocaleString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function durLabel(ci, co) {
+  const ms = co - ci;
+  const hrs = Math.round(ms / 36e5);
+  if (hrs < 24) return hrs + ' hora(s)';
+  const days = Math.round(ms / 864e5);
+  return days + ' noche(s)';
+}
+function typeLabel(t) {
+  return {room:'🛏',cabin:'🏠',vehicle:'🚗',tool:'🔧',other:'📦'}[t]||'📦';
+}
+function payLabel(p) {
+  return {cash:'💵 Efectivo',transfer:'🏦 Transferencia',mp:'💳 MercadoPago',card:'💳 Tarjeta'}[p]||p||'—';
+}
+
+// ── EXTRAS ───────────────────────────────────────────────────────────────
+let extrasData    = []; // selected extras for current reservation [{name,price,qty,catalogId}]
+let EXTRAS_CATALOG = []; // catalog loaded from DB
+
+const EXTRA_ICONS = [
+  'fa-utensils','fa-wine-glass-alt','fa-coffee','fa-birthday-cake',
+  'fa-car','fa-shuttle-van','fa-taxi',
+  'fa-spa','fa-swimmer','fa-hot-tub','fa-dumbbell',
+  'fa-broom','fa-soap','fa-tshirt',
+  'fa-baby','fa-paw','fa-wifi','fa-tv','fa-guitar',
+  'fa-star','fa-gift','fa-ice-cream','fa-umbrella-beach',
+];
+
+async function loadExtrasCatalog() {
+  try {
+    const d = await api('extras.php?action=list');
+    EXTRAS_CATALOG = d.extras || [];
+  } catch(e) { EXTRAS_CATALOG = []; }
+}
+
+// Render catalog grid inside reservation modal
+function renderCatalogGrid() {
+  const el = document.getElementById('catalogGrid');
+  if (!EXTRAS_CATALOG.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:6px 0">Sin extras en el catálogo. Agregá desde el ícono <i class="fas fa-concierge-bell"></i> en la barra superior.</div>';
+    return;
+  }
+  // Group by category
+  const cats = {};
+  EXTRAS_CATALOG.forEach(ex => {
+    const c = ex.category || 'General';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(ex);
+  });
+  el.innerHTML = '';
+  Object.entries(cats).forEach(([cat, items]) => {
+    if (Object.keys(cats).length > 1) {
+      const lbl = document.createElement('div');
+      lbl.className = 'catalog-cat-label';
+      lbl.textContent = cat;
+      el.appendChild(lbl);
+    }
+    const grid = document.createElement('div');
+    grid.className = 'catalog-grid';
+    items.forEach(item => {
+      const sel = extrasData.find(e => e.catalogId == item.id);
+      const qty = sel ? sel.qty : 0;
+      const card = document.createElement('div');
+      card.className = 'catalog-card' + (qty > 0 ? ' added' : '');
+      card.id = 'cc-' + item.id;
+      card.innerHTML = `
+        <div class="cc-icon"><i class="fas ${esc(item.icon||'fa-star')}"></i></div>
+        <div class="cc-name">${esc(item.name)}</div>
+        <div class="cc-price">$${fmt(item.price)}/u</div>
+        ${qty > 0 ? `<div class="cc-qty">
+          <button type="button" onclick="catalogQty(${item.id},-1)">−</button>
+          <span>${qty}</span>
+          <button type="button" onclick="catalogQty(${item.id},1)">+</button>
+        </div>` : ''}`;
+      if (qty === 0) card.onclick = () => catalogQty(item.id, 1);
+      grid.appendChild(card);
+    });
+    el.appendChild(grid);
+  });
+}
+
+function catalogQty(catalogId, delta) {
+  const item = EXTRAS_CATALOG.find(e => e.id == catalogId);
+  if (!item) return;
+  const idx = extrasData.findIndex(e => e.catalogId == catalogId);
+  if (idx >= 0) {
+    extrasData[idx].qty += delta;
+    if (extrasData[idx].qty <= 0) extrasData.splice(idx, 1);
+  } else if (delta > 0) {
+    extrasData.push({ catalogId: item.id, name: item.name, price: parseFloat(item.price), qty: 1 });
+  }
+  renderCatalogGrid();
+  renderExtrasSelected();
+  updateExtrasTotal();
+}
+
+function addCustomExtra() {
+  extrasData.push({ catalogId: null, name: '', price: 0, qty: 1 });
+  renderExtrasSelected();
+  updateExtrasTotal();
+  // Focus the last name input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#extrasSelected .es-custom-name');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function removeExtra(idx) {
+  extrasData.splice(idx, 1);
+  renderCatalogGrid();
+  renderExtrasSelected();
+  updateExtrasTotal();
+}
+
+function renderExtrasSelected() {
+  const el = document.getElementById('extrasSelected');
+  el.innerHTML = '';
+
+  extrasData.forEach((ex, i) => {
+    const sub = (parseFloat(ex.price)||0) * (parseInt(ex.qty)||1);
+    const row = document.createElement('div');
+    row.className = 'extra-sel-row';
+
+    if (ex.catalogId) {
+      // Item del catálogo — mostrar resumen + botón borrar
+      row.innerHTML = `
+        <span class="es-name">${esc(ex.name)} <span style="color:var(--t3)">×${ex.qty}</span></span>
+        <span class="es-amt">$${fmt(sub)}</span>
+        <button type="button" class="btn-rm-extra" title="Quitar" onclick="removeExtra(${i})">×</button>`;
+    } else {
+      // Extra personalizado — campos editables
+      row.style.cssText = 'flex-wrap:wrap;gap:6px;padding:8px 10px';
+      row.innerHTML = `
+        <input class="es-custom-name" type="text" placeholder="Descripción del extra"
+               value="${esc(ex.name)}"
+               onchange="extrasData[${i}].name=this.value;updateExtrasTotal()"
+               style="flex:1;min-width:120px;font-size:12px">
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--t3)">$</span>
+          <input type="number" placeholder="0" value="${ex.price > 0 ? ex.price : ''}"
+                 min="0" step="0.01"
+                 onchange="extrasData[${i}].price=parseFloat(this.value)||0;updateExtrasTotal()"
+                 style="width:80px;font-size:12px;text-align:right">
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <span style="font-size:11px;color:var(--t3)">Cant.</span>
+          <input type="number" placeholder="1" value="${ex.qty||1}" min="1"
+                 onchange="extrasData[${i}].qty=parseInt(this.value)||1;updateExtrasTotal()"
+                 style="width:48px;font-size:12px;text-align:center">
+        </div>
+        <span class="es-amt" style="flex-shrink:0;min-width:64px;text-align:right">$${fmt(sub)}</span>
+        <button type="button" class="btn-rm-extra" title="Quitar" onclick="removeExtra(${i})">×</button>`;
+    }
+    el.appendChild(row);
+  });
+
+  el.style.display = extrasData.length > 0 ? '' : 'none';
+  updateExtrasTotal();
+}
+
+function updateExtrasTotal() {
+  const base   = parseFloat(document.getElementById('mrPrice').value) || 0;
+  const extAmt = extrasData.reduce((s, ex) => s + (parseFloat(ex.price)||0) * (parseInt(ex.qty)||1), 0);
+  const grand  = base + extAmt;
+  const totalEl = document.getElementById('extrasTotal');
+  if (extrasData.length > 0 || base > 0) {
+    totalEl.style.display = '';
+    document.getElementById('extrasTotalAmt').textContent = '$' + fmt(grand);
+    const parts = [];
+    if (base > 0) parts.push('Alojamiento: $' + fmt(base));
+    if (extAmt > 0) parts.push('Extras: $' + fmt(extAmt));
+    document.getElementById('extrasTotalBreak').textContent = parts.join(' + ');
+  } else {
+    totalEl.style.display = 'none';
+  }
+}
+
+function getExtrasPayload() {
+  return extrasData.filter(ex => ex.name || ex.catalogId).map(ex => ({
+    name: ex.name || '', price: parseFloat(ex.price)||0, qty: parseInt(ex.qty)||1
+  }));
+}
+
+function loadExtrasFromData(extras) {
+  // Try to match with catalog by name
+  extrasData = (extras || []).map(ex => {
+    const match = EXTRAS_CATALOG.find(c => c.name === ex.name);
+    return { catalogId: match ? match.id : null, name: ex.name, price: parseFloat(ex.price), qty: parseInt(ex.qty)||1 };
+  });
+  renderCatalogGrid();
+  renderExtrasSelected();
+  updateExtrasTotal();
+}
+
+// ── EXTRAS CATALOG MANAGEMENT ─────────────────────────────────────────────
+function renderIconSelector(selected) {
+  const el = document.getElementById('iconSel');
+  el.innerHTML = EXTRA_ICONS.map(ic =>
+    `<div class="cat-icon-opt${ic===selected?' sel':''}" onclick="selectIcon('${ic}')" title="${ic}">
+       <i class="fas ${ic}"></i>
+     </div>`
+  ).join('');
+}
+
+function selectIcon(ic) {
+  document.getElementById('neIcono').value = ic;
+  renderIconSelector(ic);
+}
+
+async function openExtrasCatalogModal() {
+  renderIconSelector('fa-star');
+  await refreshCatalogMgmt();
+  openMo('moExtrasCatalog');
+}
+
+async function refreshCatalogMgmt() {
+  try {
+    const d = await api('extras.php?action=all');
+    const list = document.getElementById('catalogMgmtList');
+    // Populate category datalist
+    const cats = [...new Set((d.extras||[]).map(e => e.category).filter(Boolean))];
+    document.getElementById('catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+
+    if (!(d.extras||[]).length) {
+      list.innerHTML = '<div style="color:var(--t3);font-size:12px;padding:8px 0">No hay extras en el catálogo todavía.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    d.extras.forEach(ex => {
+      const row = document.createElement('div');
+      row.className = 'cat-item';
+      row.innerHTML = `
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--accg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas ${esc(ex.icon||'fa-star')}" style="color:var(--acc)"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}</div>
+          <div style="font-size:11px;color:var(--t3)">${esc(ex.category||'General')} · $${fmt(ex.price)}/u${ex.description?' · '+esc(ex.description):''}</div>
+        </div>
+        <button class="btn-icon btn-sm" onclick="editCatalogExtra(${ex.id})" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="btn-icon btn-sm" onclick="toggleCatalogExtra(${ex.id})" title="${ex.active?'Desactivar':'Activar'}" style="color:${ex.active?'var(--t3)':'var(--acc)'}">
+          <i class="fas ${ex.active?'fa-eye-slash':'fa-eye'}"></i>
+        </button>
+        <button class="btn-icon btn-sm" onclick="deleteCatalogExtra(${ex.id},'${esc(ex.name)}')" title="Eliminar" style="color:#f87171"><i class="fas fa-trash"></i></button>`;
+      list.appendChild(row);
+    });
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+}
+
+async function saveCatalogExtra() {
+  const body = {
+    name:        document.getElementById('neNombre').value.trim(),
+    category:    document.getElementById('neCategoria').value.trim() || 'General',
+    price:       parseFloat(document.getElementById('nePrecio').value) || 0,
+    description: document.getElementById('neDesc').value.trim(),
+    icon:        document.getElementById('neIcono').value || 'fa-star',
+  };
+  if (!body.name) { notify('El nombre es requerido', 'er'); return; }
+  try {
+    await api('extras.php?action=create', 'POST', body);
+    notify('Extra agregado al catálogo', 'ok');
+    ['neNombre','neCategoria','nePrecio','neDesc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('neIcono').value = 'fa-star';
+    renderIconSelector('fa-star');
+    document.getElementById('newExtraDetails').removeAttribute('open');
+    await loadExtrasCatalog();
+    await refreshCatalogMgmt();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function toggleCatalogExtra(id) {
+  try {
+    await api('extras.php?action=toggle&id=' + id, 'POST');
+    await loadExtrasCatalog();
+    await refreshCatalogMgmt();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteCatalogExtra(id, name) {
+  if (!confirm(`¿Eliminar "${name}" del catálogo?`)) return;
+  try {
+    await api('extras.php?action=delete&id=' + id, 'DELETE');
+    notify('Extra eliminado', 'wa');
+    await loadExtrasCatalog();
+    await refreshCatalogMgmt();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function editCatalogExtra(id) {
+  try {
+    const d = await api('extras.php?action=all');
+    const ex = (d.extras||[]).find(e => e.id == id);
+    if (!ex) return;
+    document.getElementById('neNombre').value    = ex.name;
+    document.getElementById('neCategoria').value = ex.category || '';
+    document.getElementById('nePrecio').value    = ex.price;
+    document.getElementById('neDesc').value      = ex.description || '';
+    document.getElementById('neIcono').value     = ex.icon || 'fa-star';
+    renderIconSelector(ex.icon || 'fa-star');
+    document.getElementById('newExtraDetails').setAttribute('open', '');
+    // Replace save button behavior
+    const btn = document.querySelector('#newExtraDetails button[onclick="saveCatalogExtra()"]');
+    if (btn) {
+      btn.textContent = '';
+      btn.innerHTML = '<i class="fas fa-save"></i> Actualizar';
+      btn.onclick = async () => {
+        const body = {
+          name:        document.getElementById('neNombre').value.trim(),
+          category:    document.getElementById('neCategoria').value.trim() || 'General',
+          price:       parseFloat(document.getElementById('nePrecio').value) || 0,
+          description: document.getElementById('neDesc').value.trim(),
+          icon:        document.getElementById('neIcono').value || 'fa-star',
+        };
+        if (!body.name) { notify('El nombre es requerido', 'er'); return; }
+        await api('extras.php?action=update&id=' + id, 'PUT', body);
+        notify('Extra actualizado', 'ok');
+        btn.innerHTML = '<i class="fas fa-save"></i> Guardar en catálogo';
+        btn.onclick = saveCatalogExtra;
+        await loadExtrasCatalog();
+        await refreshCatalogMgmt();
+      };
+    }
+    document.getElementById('newExtraDetails').scrollIntoView({behavior:'smooth'});
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+// ── DATE PICKERS (Flatpickr) ──────────────────────────────────────────────
+let fpIn = null, fpOut = null;
+let calculatedPrice = 0;
+
+function initDatePickers() {
+  if (typeof flatpickr === 'undefined') return;
+  const locale = {
+    firstDayOfWeek: 1,
+    weekdays: { shorthand: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'], longhand: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'] },
+    months: { shorthand: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+              longhand: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] },
+  };
+  const commonOpts = {
+    wrap: true,
+    enableTime: true,
+    dateFormat: 'd/m/Y H:i',
+    time_24hr: true,
+    locale,
+    onChange: function() { recalcPrice(); }
+  };
+  fpIn  = flatpickr('#fpInWrap',  { ...commonOpts,
+    onClose: function(dates) { if (fpOut && dates[0]) fpOut.set('minDate', dates[0]); recalcPrice(); }
+  });
+  fpOut = flatpickr('#fpOutWrap', { ...commonOpts });
+}
+
+function recalcPrice(forceUpdate = false) {
+  const inVal  = document.getElementById('mrCheckIn').value;
+  const outVal = document.getElementById('mrCheckOut').value;
+  const resId  = parseInt(document.getElementById('mrResource').value);
+  const hint   = document.getElementById('priceCalcHint');
+  const txt    = document.getElementById('priceCalcText');
+  if (!inVal || !outVal || !resId) { hint.style.display = 'none'; return; }
+
+  const parseLocal = s => {
+    const [d, t] = s.split(' ');
+    const [dd,mm,yy] = d.split('/');
+    return new Date(`${yy}-${mm}-${dd}T${t||'00:00'}`);
+  };
+  const ci = parseLocal(inVal);
+  const co = parseLocal(outVal);
+  if (isNaN(ci) || isNaN(co) || co <= ci) { hint.style.display = 'none'; return; }
+
+  const res = RESOURCES.find(r => r.id == resId);
+  if (!res) { hint.style.display = 'none'; return; }
+
+  const diffMs   = co - ci;
+  const diffHrs  = diffMs / 36e5;
+  const diffDays = diffMs / 864e5;
+
+  let price = 0, desc = '';
+  if (diffHrs < 24 && parseFloat(res.price_per_hour) > 0) {
+    price = Math.ceil(diffHrs) * parseFloat(res.price_per_hour);
+    desc  = `calculado: ${Math.ceil(diffHrs)} hora(s) × $${fmt(res.price_per_hour)}`;
+  } else if (parseFloat(res.price_per_day) > 0) {
+    const nights = Math.ceil(diffDays);
+    price = nights * parseFloat(res.price_per_day);
+    desc  = `calculado: ${nights} noche(s) × $${fmt(res.price_per_day)}`;
+  } else {
+    hint.style.display = 'none'; return;
+  }
+
+  const priceField = document.getElementById('mrPrice');
+  // Actualizar precio si: campo vacío, era el cálculo anterior, o se forzó (cambio de recurso)
+  if (!priceField.value || parseFloat(priceField.value) === calculatedPrice || forceUpdate) {
+    priceField.value = price;
+  }
+  calculatedPrice = price;
+  txt.textContent = desc + (forceUpdate ? ' — precio actualizado por cambio de habitación' : ' — editá si querés aplicar descuento');
+  hint.style.display = '';
+  updateExtrasTotal();
+}
+
+// ── PRINT & EMAIL ─────────────────────────────────────────────────────────
+function printReservation(id) {
+  const url = BASE + 'notifications.php?action=preview&id=' + id + '&token=' + encodeURIComponent(TOKEN);
+  const w = window.open(url, '_blank', 'width=700,height=800,scrollbars=yes');
+  if (!w) notify('Habilitá los popups del navegador para imprimir', 'wa');
+}
+
+async function sendReservationSummary(id, email) {
+  if (!email) { notify('El huésped no tiene email cargado', 'er'); return; }
+  if (!confirm(`¿Enviar resumen de reserva a ${email}?`)) return;
+  try {
+    notify('Enviando...', 'wa');
+    await api('notifications.php?action=send_summary&id=' + id, 'POST');
+    notify('✅ Email enviado a ' + email, 'ok');
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+}
+
+// ── SMTP SETTINGS ─────────────────────────────────────────────────────────
+async function openSmtpModal() {
+  try {
+    const data = await api('settings.php?action=get');
+    const s = data.settings || {};
+    document.getElementById('smtpHost').value     = s.smtp_host      || 'smtp.gmail.com';
+    document.getElementById('smtpPort').value     = s.smtp_port      || '587';
+    document.getElementById('smtpUser').value     = s.smtp_user      || '';
+    document.getElementById('smtpPass').value     = '';
+    document.getElementById('smtpPass').placeholder = s.smtp_pass_set ? '••••••••••••••••  (guardada)' : '••••••••••••••••';
+    document.getElementById('smtpFromName').value = s.smtp_from_name || 'Reserva Total';
+    document.getElementById('smtpEnabled').checked = s.smtp_enabled === '1';
+    document.getElementById('smtpTestTo').value   = '';
+  } catch(e) {
+    notify('Error cargando configuración: ' + e.message, 'er'); return;
+  }
+  openMo('moSmtp');
+}
+
+async function saveSmtp() {
+  const body = {
+    smtp_host:      document.getElementById('smtpHost').value.trim(),
+    smtp_port:      document.getElementById('smtpPort').value.trim(),
+    smtp_user:      document.getElementById('smtpUser').value.trim(),
+    smtp_pass:      document.getElementById('smtpPass').value,
+    smtp_from_name: document.getElementById('smtpFromName').value.trim(),
+    smtp_enabled:   document.getElementById('smtpEnabled').checked ? '1' : '0',
+  };
+  try {
+    await api('settings.php?action=save', 'POST', body);
+    notify('✅ Configuración SMTP guardada', 'ok');
+    closeMo('moSmtp');
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+}
+
+async function testSmtp() {
+  const to = document.getElementById('smtpTestTo').value.trim();
+  if (!to) { notify('Ingresá un email de destino', 'er'); return; }
+  const btn = document.getElementById('smtpTestBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+  try {
+    await api('settings.php?action=test_smtp', 'POST', { to });
+    notify('✅ Email de prueba enviado a ' + to, 'ok');
+  } catch(e) { notify('Error SMTP: ' + e.message, 'er'); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar prueba'; }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+checkAuth();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>initDatePickers();</script>
+</body>
+</html>
