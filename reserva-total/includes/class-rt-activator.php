@@ -144,13 +144,38 @@ class RT_Activator {
     private static function write_app_config() {
         global $wpdb;
         $file = RT_APP_DIR . 'rt-config.php';
+        // No pisar un secreto de cron ya generado
+        $existing_secret = null;
+        if (file_exists($file)) {
+            $prev = file_get_contents($file);
+            if (preg_match("/define\('RT_CRON_SECRET',\s*'([^']*)'\)/", $prev, $m)) {
+                $existing_secret = $m[1];
+            }
+        }
+        $secret = $existing_secret ?: bin2hex(random_bytes(16));
+        if (!get_option('rt_cron_secret')) {
+            update_option('rt_cron_secret', $secret);
+        }
+        self::write_config_content($secret);
+    }
+
+    // Regenera rt-config.php con las credenciales de DB + estado actual de licencia.
+    // Se llama al activar el plugin y cada vez que se guarda una clave de licencia.
+    public static function regenerate_app_config() {
+        $secret = get_option('rt_cron_secret', '') ?: bin2hex(random_bytes(16));
+        update_option('rt_cron_secret', $secret);
+        self::write_config_content($secret);
+    }
+
+    private static function write_config_content($secret) {
         $host = DB_HOST;
         $db   = DB_NAME;
         // Use WordPress DB for now — admin can reconfigure via rt-setup.php
-        $siteUrl   = get_site_url() . '/wp-content/plugins/reserva-total/app/';
-        $uploadUrl = $siteUrl . 'uploads/';
-        $uploadDir = RT_APP_DIR . 'uploads/';
-        $secret    = bin2hex(random_bytes(16));
+        $siteUrl       = get_site_url() . '/wp-content/plugins/reserva-total/app/';
+        $uploadUrl     = $siteUrl . 'uploads/';
+        $uploadDir     = RT_APP_DIR . 'uploads/';
+        $license_key   = get_option('rt_license_key', '');
+        $license_srv   = get_option('rt_license_server_url', RT_License::SERVER);
 
         $c  = "<?php\n// Reserva Total — generado automáticamente\n// " . date('Y-m-d H:i:s') . "\n\n";
         $c .= "define('RT_DB_HOST',    " . var_export($host,      true) . ");\n";
@@ -163,8 +188,10 @@ class RT_Activator {
         $c .= "define('RT_UPLOAD_DIR', " . var_export($uploadDir, true) . ");\n";
         $c .= "define('RT_CRON_SECRET'," . var_export($secret,    true) . ");\n";
         $c .= "define('RT_SESSION_HOURS', 24);\n";
-        $c .= "define('RT_LICENSE_KEY', '');\n";
+        $c .= "define('RT_LICENSE_KEY',    " . var_export($license_key, true) . ");\n";
+        $c .= "define('RT_LICENSE_SERVER', " . var_export($license_srv, true) . ");\n";
 
+        $file = RT_APP_DIR . 'rt-config.php';
         @file_put_contents($file, $c);
     }
 

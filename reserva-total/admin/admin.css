@@ -1,3 +1,18 @@
 .rt-admin-wrap { padding: 20px; }
 .rt-admin-wrap h1 { color: #0d9488; display: flex; align-items: center; gap: 10px; }
 .rt-version { background: #0d9488; color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+
+.rt-license-box {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 24px; max-width: 480px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.rt-license-box label { display: block; margin-bottom: 8px; font-size: 13px; }
+.rt-license-input {
+  width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+  font-size: 14px; font-family: 'Courier New', monospace; margin-bottom: 14px; box-sizing: border-box;
+}
+.rt-license-input:focus { border-color: #0d9488; outline: none; }
+.rt-license-actions { display: flex; gap: 10px; margin-bottom: 14px; }
+.rt-license-status { font-size: 13px; font-weight: 600; padding: 8px 0; }
+.rt-status-ok  { color: #0f766e; }
+.rt-status-err { color: #b91c1c; }
