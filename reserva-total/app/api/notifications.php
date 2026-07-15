@@ -113,6 +113,32 @@ function buildReceipt(array $rv, bool $forEmail) {
 
     $bg = $forEmail ? '#f4f4f4' : 'white';
 
+    $grandFmt = '$' . fmtMoney($grand);
+
+    $notesBlock = '';
+    if ($rv['notes']) {
+        $notesBlock = <<<HTML
+    <div class="section">
+      <div class="sec-title">Notas</div>
+      <div class="notes-box">{$rv['notes']}</div>
+    </div>
+HTML;
+    }
+
+    $printButtons = '';
+    if (!$forEmail) {
+        $printButtons = <<<HTML
+<div class="no-print" style="text-align:center;margin-top:20px">
+  <button onclick="window.print()" style="background:#0d9488;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">
+    🖨 Imprimir / Guardar PDF
+  </button>
+  <button onclick="window.close()" style="background:#e2e8f0;color:#333;border:none;padding:10px 28px;border-radius:8px;font-size:14px;cursor:pointer">
+    Cerrar
+  </button>
+</div>
+HTML;
+    }
+
     return <<<HTML
 <!DOCTYPE html>
 <html lang="es">
@@ -198,20 +224,14 @@ function buildReceipt(array $rv, bool $forEmail) {
         <tfoot>
           <tr class="total-row">
             <td class="total-label">TOTAL</td>
-            <td class="total-amt">$HTML . fmtMoney($grand) . <<<HTML</td>
+            <td class="total-amt">{$grandFmt}</td>
           </tr>
         </tfoot>
       </table>
       <div class="pay-row">Forma de pago: {$pay}</div>
     </div>
 
-    HTML . ($rv['notes'] ? <<<HTML
-    <div class="section">
-      <div class="sec-title">Notas</div>
-      <div class="notes-box">{$rv['notes']}</div>
-    </div>
-    HTML : '') . <<<HTML
-
+{$notesBlock}
   </div>
   <div class="footer">
     Diseñado y programado por Durval Muñoz Codazzi · Reserva Total v2.4<br>
@@ -219,16 +239,10 @@ function buildReceipt(array $rv, bool $forEmail) {
     Este comprobante fue generado el {$now}
   </div>
 </div>
-HTML . ($forEmail ? '' : <<<HTML
-<div class="no-print" style="text-align:center;margin-top:20px">
-  <button onclick="window.print()" style="background:#0d9488;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px">
-    🖨 Imprimir / Guardar PDF
-  </button>
-  <button onclick="window.close()" style="background:#e2e8f0;color:#333;border:none;padding:10px 28px;border-radius:8px;font-size:14px;cursor:pointer">
-    Cerrar
-  </button>
-</div>
-HTML) . '</body></html>';
+{$printButtons}
+</body>
+</html>
+HTML;
 }
 
 // ── SMTP helpers ─────────────────────────────────────────────
