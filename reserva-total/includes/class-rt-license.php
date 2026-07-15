@@ -3,8 +3,8 @@ defined('ABSPATH') || exit;
 
 class RT_License {
 
-    // Endpoint REST del plugin Reserva Total License Server instalado en websobreruedas.com
-    const SERVER = 'https://websobreruedas.com/wp-json/reserva-total-licenses/v1/verify';
+    // Endpoint REST del plugin Reserva Total License Server instalado en reservatotal.ar
+    const SERVER = 'https://reservatotal.ar/wp-json/reserva-total-licenses/v1/verify';
     // RSA public key — safe to embed in source; private key never leaves the license server
     const PUBLIC_KEY = <<<'RSA_PUB'
 -----BEGIN PUBLIC KEY-----

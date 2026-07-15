@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Reserva Total License Server
- * Plugin URI:  https://websobreruedas.com
+ * Plugin URI:  https://reservatotal.ar
  * Description: Servidor de licencias para Reserva Total. Gestiona claves, dominios y planes.
  * Version:     1.0.0
  * Author:      Web Sobre Ruedas
