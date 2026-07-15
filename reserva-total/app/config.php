@@ -30,7 +30,7 @@ if (!defined('RT_DB_HOST')) {
 // 3) Defaults opcionales
 if (!defined('RT_DB_CHARSET'))   define('RT_DB_CHARSET',   'utf8mb4');
 if (!defined('RT_SESSION_HOURS'))define('RT_SESSION_HOURS', 24);
-if (!defined('RT_VERSION'))      define('RT_VERSION',       '2.4.0');
+if (!defined('RT_VERSION'))      define('RT_VERSION',       '2.5.0');
 if (!defined('RT_CRON_SECRET'))  define('RT_CRON_SECRET',   '');
 if (!defined('RT_LICENSE_KEY'))  define('RT_LICENSE_KEY',   '');
 if (!defined('RT_LICENSE_SERVER'))define('RT_LICENSE_SERVER','https://reservatotal.ar/wp-json/reserva-total-licenses/v1/verify');
