@@ -586,6 +586,18 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────
+// Bootstrap desde "Entrar como administrador" (WordPress → Reserva Total):
+// si llega un token de sesión por URL, lo guardamos y limpiamos la URL.
+(function bootstrapEntryToken() {
+  const params = new URLSearchParams(window.location.search);
+  const boot = params.get('rt_bootstrap_token');
+  if (!boot) return;
+  localStorage.setItem('rt_token', boot);
+  params.delete('rt_bootstrap_token');
+  const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+  window.history.replaceState({}, '', clean);
+})();
+
 let TOKEN = localStorage.getItem('rt_token');
 let CURRENT_USER = null;
 let RESOURCES = [];

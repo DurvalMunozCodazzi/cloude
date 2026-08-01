@@ -28,10 +28,25 @@ class RT_Admin {
 
     public function render_page() {
         $app_url = RT_APP_URL . 'index.html';
+        $token   = get_option('rt_entry_token', '');
+        if (!$token) {
+            // Instalaciones activadas antes de que existiera este mecanismo
+            $token = bin2hex(random_bytes(24));
+            update_option('rt_entry_token', $token);
+        }
+        $enter_url = home_url('/?rt_enter=' . $token);
+
         echo '<div class="rt-admin-wrap">';
         echo '<h1>🗓 Reserva Total <span class="rt-version">v' . RT_VERSION . '</span></h1>';
         echo '<p>La aplicación corre de forma independiente.</p>';
         echo '<a href="' . esc_url($app_url) . '" target="_blank" class="button button-primary button-hero">Abrir Reserva Total →</a>';
+        echo '<div class="rt-entry-box">';
+        echo '<h2>🔑 Entrar como administrador</h2>';
+        echo '<p>Si perdiste el usuario o la contraseña de la app, o la base de datos quedó sin usuarios, este enlace te crea (o recupera) el usuario admin y te deja adentro sin pedir credenciales.</p>';
+        echo '<a href="' . esc_url($enter_url) . '" target="_blank" class="button button-secondary">Entrar sin usuario/contraseña →</a> ';
+        echo '<button type="button" id="rt-regen-token" class="button-link" style="margin-left:10px;color:#b91c1c">Regenerar enlace (invalida el actual)</button>';
+        echo '<div id="rt-regen-status" class="rt-license-status"></div>';
+        echo '</div>';
         echo '</div>';
     }
 

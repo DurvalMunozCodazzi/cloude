@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      2.6.0
+ * Version:      2.7.0
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '2.6.0');
+define('RT_VERSION',    '2.7.0');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
@@ -52,4 +52,48 @@ function rt_ajax_check_license_status() {
     $key    = get_option('rt_license_key', '');
     $result = RT_License::verify($key, $_SERVER['HTTP_HOST'] ?? '');
     wp_send_json($result);
+}
+
+// ── AJAX: regenerar el token de "Entrar como administrador" ──────────────────
+add_action('wp_ajax_rt_regenerate_entry_token', 'rt_ajax_regenerate_entry_token');
+function rt_ajax_regenerate_entry_token() {
+    check_ajax_referer('rt_admin_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+    $token = bin2hex(random_bytes(24));
+    update_option('rt_entry_token', $token);
+    wp_send_json_success(['url' => home_url('/?rt_enter=' . $token)]);
+}
+
+// ── "Entrar como administrador" — bypass del login de la app usando un token
+// secreto generado en la activación. Si no existe ningún usuario admin en
+// rt_users (p.ej. base de datos vacía o recién reconectada), lo crea antes
+// de abrir sesión. Mismo mecanismo que ya usa Luna Workspace en producción.
+add_action('init', 'rt_handle_admin_enter');
+function rt_handle_admin_enter() {
+    if (!isset($_GET['rt_enter'])) return;
+
+    $stored = get_option('rt_entry_token', '');
+    if (!$stored || !hash_equals($stored, (string) $_GET['rt_enter'])) {
+        wp_die('Token inválido o vencido. Regenerá el enlace en Reserva Total → Inicio.');
+    }
+
+    global $wpdb;
+
+    $admin = $wpdb->get_row("SELECT * FROM rt_users WHERE role='admin' AND active=1 ORDER BY id LIMIT 1", ARRAY_A);
+    if (!$admin) {
+        // Base de datos sin usuarios (o recién reconectada) — recrear el admin por defecto
+        RT_Activator::activate();
+        $admin = $wpdb->get_row("SELECT * FROM rt_users WHERE role='admin' AND active=1 ORDER BY id LIMIT 1", ARRAY_A);
+    }
+    if (!$admin) {
+        wp_die('No se pudo crear ni encontrar un usuario admin. Revisá la conexión a la base de datos (Reserva Total → Inicio).');
+    }
+
+    $token   = bin2hex(random_bytes(32));
+    $expires = date('Y-m-d H:i:s', time() + 24 * 3600);
+    $wpdb->insert('rt_sessions', ['user_id' => $admin['id'], 'token' => $token, 'expires_at' => $expires]);
+    $wpdb->update('rt_users', ['last_login' => current_time('mysql')], ['id' => $admin['id']]);
+
+    wp_redirect(RT_APP_URL . 'index.html?rt_bootstrap_token=' . $token);
+    exit;
 }

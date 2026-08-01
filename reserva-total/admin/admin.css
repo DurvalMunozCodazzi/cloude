@@ -16,3 +16,11 @@
 .rt-license-status { font-size: 13px; font-weight: 600; padding: 8px 0; }
 .rt-status-ok  { color: #0f766e; }
 .rt-status-err { color: #b91c1c; }
+
+.rt-entry-box {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 24px; max-width: 560px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  margin-top: 20px;
+}
+.rt-entry-box h2 { margin-top: 0; font-size: 15px; color: #0d9488; }
+.rt-entry-box p { font-size: 13px; color: #555; line-height: 1.6; }

@@ -6,6 +6,10 @@ class RT_Activator {
         self::seed_initial_data();
         self::write_app_config();
         self::create_app_page();
+        // Token permanente para "Entrar como administrador" (bypass del login de la app)
+        if (!get_option('rt_entry_token')) {
+            update_option('rt_entry_token', bin2hex(random_bytes(24)));
+        }
         flush_rewrite_rules();
     }
 
