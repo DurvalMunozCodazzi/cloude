@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      2.9.0
+ * Version:      2.9.1
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '2.9.0');
+define('RT_VERSION',    '2.9.1');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
@@ -24,6 +24,19 @@ require_once RT_PLUGIN_DIR . 'includes/class-rt-license.php';
 
 register_activation_hook(__FILE__,   ['RT_Activator', 'activate']);
 register_deactivation_hook(__FILE__, ['RT_Activator', 'deactivate']);
+
+// Autoreparación: WordPress solo dispara register_activation_hook al pasar de
+// desactivado a activado — actualizar el plugin reemplazando sus archivos
+// (sin desactivar primero) NO vuelve a correrlo, así que app/rt-config.php
+// puede quedar sin generarse tras una actualización. Esto lo verifica en
+// cada carga de WordPress y lo regenera solo si falta, sin depender de que
+// alguien recuerde desactivar/reactivar manualmente.
+add_action('plugins_loaded', 'rt_maybe_regenerate_config');
+function rt_maybe_regenerate_config() {
+    if (!file_exists(RT_APP_DIR . 'rt-config.php')) {
+        RT_Activator::regenerate_app_config();
+    }
+}
 
 if (is_admin()) {
     new RT_Admin();

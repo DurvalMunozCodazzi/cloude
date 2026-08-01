@@ -213,8 +213,14 @@ class RT_Activator {
         $c .= "define('RT_LICENSE_KEY',    " . var_export($license_key, true) . ");\n";
         $c .= "define('RT_LICENSE_SERVER', " . var_export($license_srv, true) . ");\n";
 
-        $file = RT_APP_DIR . 'rt-config.php';
-        @file_put_contents($file, $c);
+        $file   = RT_APP_DIR . 'rt-config.php';
+        $result = @file_put_contents($file, $c);
+        if ($result === false) {
+            add_action('admin_notices', function() use ($file) {
+                echo '<div class="notice notice-error"><p><strong>Reserva Total:</strong> no se pudo escribir <code>' . esc_html($file) . '</code>. '
+                   . 'Revisá los permisos de escritura de esa carpeta en el hosting — sin ese archivo, la app no puede conectarse a la base de datos.</p></div>';
+            });
+        }
     }
 
     private static function create_app_page() {
