@@ -237,10 +237,37 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <div class="login-logo">🗓</div>
     <div class="login-title">Reserva Total</div>
     <div class="login-sub">Sistema de Gestión de Reservas</div>
-    <div id="loginErr" class="alert-err" style="display:none"></div>
-    <div class="fg"><label>Usuario o Email</label><input id="lgUser" type="text" placeholder="admin" autocomplete="username"></div>
-    <div class="fg"><label>Contraseña</label><input id="lgPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Ingresar</button>
+
+    <!-- Login normal -->
+    <div id="loginBox">
+      <div id="loginErr" class="alert-err" style="display:none"></div>
+      <div class="fg"><label>Usuario o Email</label><input id="lgUser" type="text" placeholder="admin" autocomplete="username"></div>
+      <div class="fg"><label>Contraseña</label><input id="lgPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Ingresar</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" onclick="showForgotBox();return false" style="font-size:12px;color:var(--t3)">¿Olvidaste tu contraseña?</a>
+      </div>
+    </div>
+
+    <!-- Olvidé mi contraseña -->
+    <div id="forgotBox" style="display:none">
+      <p style="font-size:12px;color:var(--t2);margin-bottom:14px">Ingresá tu usuario o email. Si existe una cuenta, te mandamos un link para restablecer la contraseña.</p>
+      <div id="forgotMsg" class="alert-err" style="display:none"></div>
+      <div class="fg"><label>Usuario o Email</label><input id="fgUser" type="text" placeholder="admin"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doForgotPassword()"><i class="fas fa-paper-plane"></i> Enviar enlace</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" onclick="showLoginBox();return false" style="font-size:12px;color:var(--t3)">← Volver a ingresar</a>
+      </div>
+    </div>
+
+    <!-- Restablecer contraseña (llega por link del email) -->
+    <div id="resetBox" style="display:none">
+      <p style="font-size:12px;color:var(--t2);margin-bottom:14px">Elegí tu nueva contraseña.</p>
+      <div id="resetMsg" class="alert-err" style="display:none"></div>
+      <div class="fg"><label>Nueva contraseña</label><input id="rsPass" type="password" placeholder="••••••••"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doResetPassword()"><i class="fas fa-key"></i> Guardar y entrar</button>
+    </div>
+
     <div class="login-footer">Diseñado y programado por Durval Muñoz Codazzi<br>v2.4 · Reserva Total®</div>
   </div>
 </div>
@@ -610,6 +637,9 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
   window.history.replaceState({}, '', clean);
 })();
 
+// Link de "Olvidé mi contraseña" recibido por email: ?reset_token=...
+const RESET_TOKEN = new URLSearchParams(window.location.search).get('reset_token');
+
 let TOKEN = localStorage.getItem('rt_token');
 let CURRENT_USER = null;
 let RESOURCES = [];
@@ -674,6 +704,51 @@ async function doLogin() {
 }
 
 document.getElementById('lgPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+function showLoginBox() {
+  document.getElementById('loginBox').style.display = '';
+  document.getElementById('forgotBox').style.display = 'none';
+  document.getElementById('resetBox').style.display = 'none';
+}
+function showForgotBox() {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('forgotBox').style.display = '';
+  document.getElementById('resetBox').style.display = 'none';
+  document.getElementById('forgotMsg').style.display = 'none';
+}
+
+async function doForgotPassword() {
+  const identifier = document.getElementById('fgUser').value.trim();
+  const msg = document.getElementById('forgotMsg');
+  if (!identifier) { msg.textContent = 'Ingresá tu usuario o email'; msg.style.display = 'block'; return; }
+  try {
+    const d = await api('auth.php?action=forgot_password', 'POST', { identifier });
+    msg.style.color = 'var(--acc)';
+    msg.textContent = d.message || 'Si el usuario existe, te enviamos un email.';
+    msg.style.display = 'block';
+  } catch(e) {
+    msg.style.color = '';
+    msg.textContent = e.message;
+    msg.style.display = 'block';
+  }
+}
+
+async function doResetPassword() {
+  const pass = document.getElementById('rsPass').value;
+  const msg  = document.getElementById('resetMsg');
+  if (pass.length < 4) { msg.textContent = 'La contraseña debe tener al menos 4 caracteres'; msg.style.display = 'block'; return; }
+  try {
+    await api('auth.php?action=reset_password', 'POST', { token: RESET_TOKEN, password: pass });
+    notify('Contraseña actualizada. Ya podés ingresar.', 'ok');
+    const params = new URLSearchParams(window.location.search);
+    params.delete('reset_token');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+    showLoginBox();
+  } catch(e) {
+    msg.textContent = e.message;
+    msg.style.display = 'block';
+  }
+}
 
 async function doLogout() {
   try { await api('auth.php?action=logout', 'POST'); } catch(e) {}
@@ -1768,7 +1843,13 @@ async function testSmtp() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-checkAuth();
+if (RESET_TOKEN) {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('resetBox').style.display = '';
+} else {
+  checkAuth();
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>initDatePickers();</script>

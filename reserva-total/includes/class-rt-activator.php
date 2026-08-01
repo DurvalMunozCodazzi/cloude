@@ -34,6 +34,8 @@ class RT_Activator {
             `phone`      VARCHAR(30)  DEFAULT NULL,
             `notes`      TEXT         DEFAULT NULL,
             `last_login` DATETIME     DEFAULT NULL,
+            `reset_token`   VARCHAR(64) DEFAULT NULL,
+            `reset_expires` DATETIME    DEFAULT NULL,
             `created_at` DATETIME     DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             UNIQUE KEY `username` (`username`)
@@ -129,6 +131,20 @@ class RT_Activator {
         ) $charset");
 
         self::migrate_extras_catalog();
+        self::migrate_users();
+    }
+
+    // Columnas de recuperación de contraseña, para instalaciones de rt_users
+    // creadas antes de que existiera este mecanismo.
+    private static function migrate_users() {
+        global $wpdb;
+        $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `rt_users`", ARRAY_A), 'Field');
+        if (!in_array('reset_token', $cols)) {
+            $wpdb->query("ALTER TABLE `rt_users` ADD COLUMN `reset_token` VARCHAR(64) DEFAULT NULL");
+        }
+        if (!in_array('reset_expires', $cols)) {
+            $wpdb->query("ALTER TABLE `rt_users` ADD COLUMN `reset_expires` DATETIME DEFAULT NULL");
+        }
     }
 
     // MySQL 5.x-compatible ADD COLUMN: solo altera si la columna todavía no existe.
