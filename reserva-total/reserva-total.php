@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      2.7.0
+ * Version:      2.8.0
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '2.7.0');
+define('RT_VERSION',    '2.8.0');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
@@ -62,6 +62,27 @@ function rt_ajax_regenerate_entry_token() {
     $token = bin2hex(random_bytes(24));
     update_option('rt_entry_token', $token);
     wp_send_json_success(['url' => home_url('/?rt_enter=' . $token)]);
+}
+
+// ── AJAX: cambiar la contraseña del admin de la app desde WordPress ──────────
+add_action('wp_ajax_rt_reset_admin_password', 'rt_ajax_reset_admin_password');
+function rt_ajax_reset_admin_password() {
+    check_ajax_referer('rt_admin_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+
+    $pass = trim($_POST['password'] ?? '');
+    if (strlen($pass) < 4) wp_send_json_error('La contraseña debe tener al menos 4 caracteres');
+
+    global $wpdb;
+    $admin = $wpdb->get_row("SELECT * FROM rt_users WHERE role='admin' AND active=1 ORDER BY id LIMIT 1", ARRAY_A);
+    if (!$admin) {
+        RT_Activator::activate();
+        $admin = $wpdb->get_row("SELECT * FROM rt_users WHERE role='admin' AND active=1 ORDER BY id LIMIT 1", ARRAY_A);
+    }
+    if (!$admin) wp_send_json_error('No se pudo crear ni encontrar un usuario admin');
+
+    $wpdb->update('rt_users', ['password' => password_hash($pass, PASSWORD_DEFAULT)], ['id' => $admin['id']]);
+    wp_send_json_success(['message' => 'Contraseña actualizada', 'username' => $admin['username']]);
 }
 
 // ── "Entrar como administrador" — bypass del login de la app usando un token

@@ -69,5 +69,33 @@
                 });
             });
         }
+
+        // ── Cambiar contraseña del admin de la app ─────────────────────────
+        var passSaveBtn = document.getElementById('rt-admin-pass-save');
+        var passInput   = document.getElementById('rt-admin-pass');
+        var passStatus  = document.getElementById('rt-admin-pass-status');
+
+        if (passSaveBtn && passInput && passStatus) {
+            passSaveBtn.addEventListener('click', function() {
+                var pass = passInput.value;
+                if (pass.length < 4) {
+                    passStatus.textContent = '✗ La contraseña debe tener al menos 4 caracteres';
+                    passStatus.className = 'rt-license-status rt-status-err';
+                    return;
+                }
+                passStatus.textContent = 'Guardando…';
+                passStatus.className = 'rt-license-status';
+                post('rt_reset_admin_password', { password: pass }).then(function(res) {
+                    if (res && res.success) {
+                        passStatus.textContent = '✓ Contraseña actualizada para el usuario "' + res.data.username + '"';
+                        passStatus.className = 'rt-license-status rt-status-ok';
+                        passInput.value = '';
+                    } else {
+                        passStatus.textContent = '✗ ' + (res && res.data ? res.data : 'Error al guardar');
+                        passStatus.className = 'rt-license-status rt-status-err';
+                    }
+                });
+            });
+        }
     });
 })();

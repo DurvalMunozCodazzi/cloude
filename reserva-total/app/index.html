@@ -160,6 +160,8 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.on{display:flex}
 .modal{background:var(--elev);border:1px solid var(--bdr);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px}
+/* Ventana de "Nueva Reserva" — fondo más claro que el resto de los modales */
+#moReserva .modal{background:#282c4a;border-color:#3d4270}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .modal-title{font-size:17px;font-weight:800;color:var(--t1)}
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)}
@@ -196,6 +198,9 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 .user-info{flex:1}
 .user-name{font-size:13px;font-weight:600;color:var(--t1)}
 .user-role{font-size:10px;color:var(--t3)}
+.user-pw-row{display:flex;gap:8px;padding:0 0 10px 42px;align-items:center}
+.user-pw-input{flex:1;padding:7px 10px;border:1px solid var(--bdr);border-radius:var(--r);background:var(--bg);color:var(--t1);font-size:12px}
+.user-pw-input:focus{border-color:var(--acc);outline:none}
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -1186,8 +1191,18 @@ async function openUsersModal() {
           <div class="user-name">${esc(u.name)} <span style="font-size:10px;color:var(--t3)">(${u.username})</span></div>
           <div class="user-role">${u.role==='admin'?'👑 Admin':'👤 Miembro'} ${u.email?'· '+u.email:''}</div>
         </div>
+        <button class="btn-icon" title="Cambiar contraseña" onclick="togglePasswordRow(${u.id})"><i class="fas fa-key"></i></button>
         ${u.id != CURRENT_USER.id ? `<button class="btn-icon" style="color:#f87171" onclick="deleteUser(${u.id},'${esc(u.name)}')"><i class="fas fa-trash"></i></button>` : ''}`;
       ul.appendChild(div);
+
+      const pwRow = document.createElement('div');
+      pwRow.className = 'user-pw-row';
+      pwRow.id = 'pw-row-' + u.id;
+      pwRow.style.display = 'none';
+      pwRow.innerHTML = `
+        <input type="password" id="pw-input-${u.id}" placeholder="Nueva contraseña (mín. 4 caracteres)" class="user-pw-input">
+        <button class="btn btn-primary btn-sm" onclick="saveUserPassword(${u.id})"><i class="fas fa-save"></i> Guardar</button>`;
+      ul.appendChild(pwRow);
     });
   } catch(e) { notify('Error: ' + e.message, 'er'); }
   openMo('moUsers');
@@ -1208,6 +1223,27 @@ async function createUser() {
     notify('Usuario creado', 'ok');
     ['nuUser','nuName','nuEmail','nuPhone','nuPass'].forEach(id => document.getElementById(id).value='');
     openUsersModal();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function togglePasswordRow(id) {
+  const row = document.getElementById('pw-row-' + id);
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  document.querySelectorAll('.user-pw-row').forEach(r => r.style.display = 'none');
+  row.style.display = open ? 'none' : 'flex';
+  if (!open) document.getElementById('pw-input-' + id).focus();
+}
+
+async function saveUserPassword(id) {
+  const input = document.getElementById('pw-input-' + id);
+  const pass  = input.value;
+  if (pass.length < 4) { notify('La contraseña debe tener al menos 4 caracteres', 'er'); return; }
+  try {
+    await api('users.php?action=change_password&id=' + id, 'POST', { password: pass });
+    notify('Contraseña actualizada', 'ok');
+    input.value = '';
+    document.getElementById('pw-row-' + id).style.display = 'none';
   } catch(e) { notify(e.message, 'er'); }
 }
 

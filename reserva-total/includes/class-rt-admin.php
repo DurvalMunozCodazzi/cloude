@@ -47,6 +47,15 @@ class RT_Admin {
         echo '<button type="button" id="rt-regen-token" class="button-link" style="margin-left:10px;color:#b91c1c">Regenerar enlace (invalida el actual)</button>';
         echo '<div id="rt-regen-status" class="rt-license-status"></div>';
         echo '</div>';
+
+        echo '<div class="rt-entry-box">';
+        echo '<h2>🔒 Cambiar contraseña del administrador</h2>';
+        echo '<p>Le asigna una contraseña nueva al usuario admin de la app (lo crea si no existe). Usá esto si preferís volver a tener usuario/contraseña fijos en vez del enlace de arriba.</p>';
+        echo '<input type="password" id="rt-admin-pass" placeholder="Nueva contraseña (mín. 4 caracteres)" class="rt-license-input" style="max-width:300px;display:inline-block;margin-right:10px">';
+        echo '<button type="button" id="rt-admin-pass-save" class="button button-primary">Guardar contraseña</button>';
+        echo '<div id="rt-admin-pass-status" class="rt-license-status"></div>';
+        echo '</div>';
+
         echo '</div>';
     }
 
