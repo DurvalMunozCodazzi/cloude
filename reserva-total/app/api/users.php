@@ -8,7 +8,7 @@ $id     = intval($_GET['id'] ?? 0);
 
 if ($method === 'GET' && $action === 'list') {
     rtRequireAdmin();
-    $rows = $db->query("SELECT id,username,name,email,role,color,active,phone,notes,created_at,last_login FROM rt_users ORDER BY role,name")->fetchAll();
+    $rows = $db->query("SELECT id,username,name,email,role,color,active,phone,notes,created_at,last_login FROM rt_users WHERE active=1 ORDER BY role,name")->fetchAll();
     rtOut(['users' => $rows]);
 }
 
