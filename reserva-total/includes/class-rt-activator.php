@@ -114,6 +114,8 @@ class RT_Activator {
             `name`        VARCHAR(200) NOT NULL,
             `description` VARCHAR(500) DEFAULT NULL,
             `price`       DECIMAL(10,2) DEFAULT 0,
+            `sku`         VARCHAR(50)  DEFAULT '',
+            `stock`       INT          DEFAULT NULL,
             `category`    VARCHAR(100) DEFAULT 'General',
             `icon`        VARCHAR(50)  DEFAULT 'fa-star',
             `active`      TINYINT DEFAULT 1,
@@ -121,6 +123,22 @@ class RT_Activator {
             `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`)
         ) $charset");
+
+        self::migrate_extras_catalog();
+    }
+
+    // MySQL 5.x-compatible ADD COLUMN: solo altera si la columna todavía no existe.
+    // Necesario para instalaciones ya existentes de extras_catalog (creada antes
+    // de que sku/stock formaran parte del CREATE TABLE).
+    private static function migrate_extras_catalog() {
+        global $wpdb;
+        $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `extras_catalog`", ARRAY_A), 'Field');
+        if (!in_array('sku', $cols)) {
+            $wpdb->query("ALTER TABLE `extras_catalog` ADD COLUMN `sku` VARCHAR(50) DEFAULT '' AFTER `price`");
+        }
+        if (!in_array('stock', $cols)) {
+            $wpdb->query("ALTER TABLE `extras_catalog` ADD COLUMN `stock` INT DEFAULT NULL AFTER `sku`");
+        }
     }
 
     private static function seed_initial_data() {

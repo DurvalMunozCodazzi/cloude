@@ -25,12 +25,15 @@ if ($method === 'POST' && $action === 'create') {
     $b    = json_decode(file_get_contents('php://input'), true);
     $name = trim($b['name'] ?? '');
     if (!$name) rtErr('El nombre es requerido');
-    $db->prepare("INSERT INTO extras_catalog (name,description,price,category,icon,active,position)
-                  VALUES (?,?,?,?,?,1,(SELECT COALESCE(MAX(position),0)+1 FROM extras_catalog ec))")
+    $stock = ($b['stock'] ?? '') === '' ? null : intval($b['stock']);
+    $db->prepare("INSERT INTO extras_catalog (name,description,price,sku,stock,category,icon,active,position)
+                  VALUES (?,?,?,?,?,?,?,1,(SELECT COALESCE(MAX(position),0)+1 FROM extras_catalog ec))")
        ->execute([
            $name,
            trim($b['description'] ?? ''),
            floatval($b['price'] ?? 0),
+           trim($b['sku'] ?? ''),
+           $stock,
            trim($b['category'] ?? 'General'),
            trim($b['icon'] ?? 'fa-star'),
        ]);
@@ -42,8 +45,9 @@ if ($method === 'PUT' && $action === 'update') {
     rtRequireAdmin();
     if (!$id) rtErr('ID requerido');
     $b    = json_decode(file_get_contents('php://input'), true);
+    if (array_key_exists('stock', $b) && $b['stock'] === '') $b['stock'] = null;
     $sets = []; $vals = [];
-    foreach (['name','description','price','category','icon','active','position'] as $f) {
+    foreach (['name','description','price','sku','stock','category','icon','active','position'] as $f) {
         if (array_key_exists($f, $b)) { $sets[] = "$f=?"; $vals[] = $b[$f]; }
     }
     if ($sets) { $vals[] = $id; $db->prepare("UPDATE extras_catalog SET ".implode(',',$sets)." WHERE id=?")->execute($vals); }

@@ -65,7 +65,7 @@ function buildReceipt(array $rv, bool $forEmail) {
     $statusColors = ['confirmed'=>'#0d9488','pending'=>'#f59e0b','paid'=>'#3b82f6',
                      'in_progress'=>'#8b5cf6','completed'=>'#6b7280','cancelled'=>'#ef4444'];
     $payLabels    = ['cash'=>'Efectivo','transfer'=>'Transferencia','mp'=>'MercadoPago','card'=>'Tarjeta'];
-    $typeLabels   = ['room'=>'Habitación','cabin'=>'Cabaña','vehicle'=>'Vehículo','tool'=>'Herramienta','other'=>'Otro'];
+    $typeLabels   = ['room'=>'Habitación','cabin'=>'Cabaña','apartment'=>'Departamento','house'=>'Casa','other'=>'Otro'];
 
     $ci      = new DateTime($rv['check_in']);
     $co      = new DateTime($rv['check_out']);

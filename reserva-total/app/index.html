@@ -445,8 +445,8 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <select id="resType">
         <option value="room">🛏 Habitación</option>
         <option value="cabin">🏠 Cabaña</option>
-        <option value="vehicle">🚗 Vehículo</option>
-        <option value="tool">🔧 Herramienta</option>
+        <option value="apartment">🏢 Departamento</option>
+        <option value="house">🏡 Casa</option>
         <option value="other">📦 Otro</option>
       </select>
     </div>
@@ -521,6 +521,10 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
         <div class="row2">
           <div class="fg"><label>Precio unitario</label><input id="nePrecio" type="number" min="0" step="0.01" placeholder="0.00"></div>
           <div class="fg"><label>Descripción</label><input id="neDesc" type="text" placeholder="Detalle opcional"></div>
+        </div>
+        <div class="row2">
+          <div class="fg"><label>Código / SKU</label><input id="neSku" type="text" placeholder="Ej: BAR-001"></div>
+          <div class="fg"><label>Stock disponible</label><input id="neStock" type="number" min="0" step="1" placeholder="Vacío = sin control de stock"></div>
         </div>
         <div class="fg">
           <label>Ícono</label>
@@ -597,7 +601,7 @@ const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Ago
 const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const STATUS_LABELS = {confirmed:'Confirmada',pending:'Pendiente',paid:'Pagada',in_progress:'En curso',completed:'Finalizada',cancelled:'Cancelada'};
 const STATUS_COLORS = {confirmed:'var(--confirmed)',pending:'var(--pending)',paid:'var(--paid)',in_progress:'var(--in_progress)',completed:'var(--completed)',cancelled:'var(--cancelled)'};
-const TYPE_ICONS = {room:'fa-bed',cabin:'fa-house',vehicle:'fa-car',tool:'fa-wrench',other:'fa-box'};
+const TYPE_ICONS = {room:'fa-bed',cabin:'fa-house',apartment:'fa-building',house:'fa-house-chimney',other:'fa-box'};
 const COLORS = ['#0d9488','#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e','#ef4444','#6366f1','#f97316','#06b6d4'];
 
 // ── API ───────────────────────────────────────────────────────────────────
@@ -1248,7 +1252,7 @@ function durLabel(ci, co) {
   return days + ' noche(s)';
 }
 function typeLabel(t) {
-  return {room:'🛏',cabin:'🏠',vehicle:'🚗',tool:'🔧',other:'📦'}[t]||'📦';
+  return {room:'🛏',cabin:'🏠',apartment:'🏢',house:'🏡',other:'📦'}[t]||'📦';
 }
 function payLabel(p) {
   return {cash:'💵 Efectivo',transfer:'🏦 Transferencia',mp:'💳 MercadoPago',card:'💳 Tarjeta'}[p]||p||'—';
@@ -1475,8 +1479,8 @@ async function refreshCatalogMgmt() {
           <i class="fas ${esc(ex.icon||'fa-star')}" style="color:var(--acc)"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}</div>
-          <div style="font-size:11px;color:var(--t3)">${esc(ex.category||'General')} · $${fmt(ex.price)}/u${ex.description?' · '+esc(ex.description):''}</div>
+          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}${ex.sku?' <span style="font-weight:400;color:var(--t3)">('+esc(ex.sku)+')</span>':''}</div>
+          <div style="font-size:11px;color:var(--t3)">${esc(ex.category||'General')} · $${fmt(ex.price)}/u${ex.description?' · '+esc(ex.description):''} · ${ex.stock===null||ex.stock===undefined?'Sin control de stock':'Stock: '+ex.stock}</div>
         </div>
         <button class="btn-icon btn-sm" onclick="editCatalogExtra(${ex.id})" title="Editar"><i class="fas fa-edit"></i></button>
         <button class="btn-icon btn-sm" onclick="toggleCatalogExtra(${ex.id})" title="${ex.active?'Desactivar':'Activar'}" style="color:${ex.active?'var(--t3)':'var(--acc)'}">
@@ -1494,13 +1498,15 @@ async function saveCatalogExtra() {
     category:    document.getElementById('neCategoria').value.trim() || 'General',
     price:       parseFloat(document.getElementById('nePrecio').value) || 0,
     description: document.getElementById('neDesc').value.trim(),
+    sku:         document.getElementById('neSku').value.trim(),
+    stock:       document.getElementById('neStock').value.trim(),
     icon:        document.getElementById('neIcono').value || 'fa-star',
   };
   if (!body.name) { notify('El nombre es requerido', 'er'); return; }
   try {
     await api('extras.php?action=create', 'POST', body);
     notify('Extra agregado al catálogo', 'ok');
-    ['neNombre','neCategoria','nePrecio','neDesc'].forEach(id => document.getElementById(id).value = '');
+    ['neNombre','neCategoria','nePrecio','neDesc','neSku','neStock'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('neIcono').value = 'fa-star';
     renderIconSelector('fa-star');
     document.getElementById('newExtraDetails').removeAttribute('open');
@@ -1536,6 +1542,8 @@ async function editCatalogExtra(id) {
     document.getElementById('neCategoria').value = ex.category || '';
     document.getElementById('nePrecio').value    = ex.price;
     document.getElementById('neDesc').value      = ex.description || '';
+    document.getElementById('neSku').value       = ex.sku || '';
+    document.getElementById('neStock').value     = (ex.stock === null || ex.stock === undefined) ? '' : ex.stock;
     document.getElementById('neIcono').value     = ex.icon || 'fa-star';
     renderIconSelector(ex.icon || 'fa-star');
     document.getElementById('newExtraDetails').setAttribute('open', '');
@@ -1550,6 +1558,8 @@ async function editCatalogExtra(id) {
           category:    document.getElementById('neCategoria').value.trim() || 'General',
           price:       parseFloat(document.getElementById('nePrecio').value) || 0,
           description: document.getElementById('neDesc').value.trim(),
+          sku:         document.getElementById('neSku').value.trim(),
+          stock:       document.getElementById('neStock').value.trim(),
           icon:        document.getElementById('neIcono').value || 'fa-star',
         };
         if (!body.name) { notify('El nombre es requerido', 'er'); return; }
