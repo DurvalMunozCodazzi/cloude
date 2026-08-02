@@ -30,7 +30,7 @@ if (!defined('RT_DB_HOST')) {
 // 3) Defaults opcionales
 if (!defined('RT_DB_CHARSET'))   define('RT_DB_CHARSET',   'utf8mb4');
 if (!defined('RT_SESSION_HOURS'))define('RT_SESSION_HOURS', 24);
-if (!defined('RT_VERSION'))      define('RT_VERSION',       '2.12.0');
+if (!defined('RT_VERSION'))      define('RT_VERSION',       '2.13.0');
 if (!defined('RT_CRON_SECRET'))  define('RT_CRON_SECRET',   '');
 if (!defined('RT_LICENSE_KEY'))  define('RT_LICENSE_KEY',   '');
 if (!defined('RT_LICENSE_SERVER'))define('RT_LICENSE_SERVER','https://reservatotal.ar/wp-json/reserva-total-licenses/v1/verify');
@@ -101,6 +101,39 @@ function rtRequireAdmin() {
     $user = rtRequireAuth();
     if ($user['role'] !== 'admin') rtErr('Solo el administrador puede realizar esta acción', 403);
     return $user;
+}
+
+// ── Buscar o crear un cliente a partir de datos de huésped ───────────────────
+// Compartida entre clients.php y reservations.php: cuando se carga una
+// reserva sin elegir cliente explícitamente, vincula (o crea) uno a partir
+// del nombre/email/teléfono/DNI cargados a mano.
+function findOrCreateClient(PDO $db, $guestName, $email = '', $phone = '', $dni = '') {
+    $guestName = trim($guestName); $email = trim($email); $phone = trim($phone); $dni = trim($dni);
+    if (!$guestName && !$email && !$phone && !$dni) return null;
+
+    if ($dni) {
+        $st = $db->prepare("SELECT id FROM clients WHERE dni=? AND dni!='' AND active=1 LIMIT 1");
+        $st->execute([$dni]);
+        if ($row = $st->fetch()) return $row['id'];
+    }
+    if ($email) {
+        $st = $db->prepare("SELECT id FROM clients WHERE email=? AND email!='' AND active=1 LIMIT 1");
+        $st->execute([$email]);
+        if ($row = $st->fetch()) return $row['id'];
+    }
+    if ($phone) {
+        $st = $db->prepare("SELECT id FROM clients WHERE phone=? AND phone!='' AND active=1 LIMIT 1");
+        $st->execute([$phone]);
+        if ($row = $st->fetch()) return $row['id'];
+    }
+    if (!$guestName) return null;
+
+    $parts     = preg_split('/\s+/', $guestName, 2);
+    $firstName = $parts[0];
+    $lastName  = $parts[1] ?? '';
+    $db->prepare("INSERT INTO clients (first_name,last_name,dni,email,phone) VALUES (?,?,?,?,?)")
+       ->execute([$firstName, $lastName, $dni, $email, $phone]);
+    return $db->lastInsertId();
 }
 
 // ── CORS ────────────────────────────────────────────────────────────────────

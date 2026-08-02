@@ -26,14 +26,6 @@ function saveExtras(PDO $db, $reservationId, $extras) {
     }
 }
 
-// ── Helper: total alojamiento + extras ───────────────────────
-function calcTotal(array $row, array $extras) {
-    $base = floatval($row['total_price'] ?? 0);
-    $extTotal = 0;
-    foreach ($extras as $ex) $extTotal += floatval($ex['price']) * intval($ex['qty']);
-    return round($base + $extTotal, 2);
-}
-
 // ── Helper: pagos registrados de una reserva ─────────────────
 function loadPayments(PDO $db, $reservationId) {
     $st = $db->prepare("SELECT id,amount,method,payment_date,notes,created_at
@@ -42,7 +34,28 @@ function loadPayments(PDO $db, $reservationId) {
     return $st->fetchAll();
 }
 
-// ── Helper: adjunta extras + pagos + totales a una fila de reserva ───
+// ── Helper: acompañantes que vinieron en esta reserva puntual ─
+function loadReservationGuests(PDO $db, $reservationId) {
+    $st = $db->prepare("SELECT c.id,c.first_name,c.last_name,c.dni,c.relationship
+                         FROM reservation_guests rg
+                         JOIN client_companions c ON c.id = rg.companion_id
+                         WHERE rg.reservation_id=? ORDER BY c.id");
+    $st->execute([$reservationId]);
+    return $st->fetchAll();
+}
+
+// ── Helper: guardar acompañantes de esta reserva (borra y re-inserta) ─
+function saveReservationGuests(PDO $db, $reservationId, $companionIds) {
+    $db->prepare("DELETE FROM reservation_guests WHERE reservation_id=?")->execute([$reservationId]);
+    if (!is_array($companionIds)) return;
+    $st = $db->prepare("INSERT INTO reservation_guests (reservation_id,companion_id) VALUES (?,?)");
+    foreach ($companionIds as $cid) {
+        $cid = intval($cid);
+        if ($cid) $st->execute([$reservationId, $cid]);
+    }
+}
+
+// ── Helper: adjunta extras + pagos + totales + cliente/acompañantes ──
 function attachTotals(PDO $db, array $row) {
     $extras   = loadExtras($db, $row['id']);
     $payments = loadPayments($db, $row['id']);
@@ -58,6 +71,16 @@ function attachTotals(PDO $db, array $row) {
     $row['payments']     = $payments;
     $row['paid_total']   = round($paidTotal, 2);
     $row['balance']      = round($grand - $paidTotal, 2);
+    $row['guests']       = loadReservationGuests($db, $row['id']);
+
+    if (!empty($row['client_id'])) {
+        $c = $db->prepare("SELECT id,first_name,last_name FROM clients WHERE id=?");
+        $c->execute([$row['client_id']]);
+        $client = $c->fetch();
+        $row['client_name'] = $client ? trim($client['first_name'].' '.$client['last_name']) : null;
+    } else {
+        $row['client_name'] = null;
+    }
     return $row;
 }
 
@@ -123,12 +146,19 @@ if ($method === 'POST' && $action === 'create') {
     $conflict->execute([$resourceId, $checkOut, $checkIn]);
     if ($conflict->fetch()) rtErr('El recurso ya tiene una reserva en ese período');
 
+    // Cliente: el elegido explícitamente, o buscar/crear a partir de los
+    // datos del huésped (nombre/email/teléfono/DNI) si no se eligió ninguno.
+    $clientId = intval($b['client_id'] ?? 0) ?: null;
+    if (!$clientId) {
+        $clientId = findOrCreateClient($db, $guestName, $b['guest_email'] ?? '', $b['guest_phone'] ?? '', $b['guest_doc'] ?? '');
+    }
+
     $db->prepare("INSERT INTO reservations
-        (resource_id,guest_name,guest_email,guest_phone,guest_doc,check_in,check_out,
+        (resource_id,client_id,guest_name,guest_email,guest_phone,guest_doc,check_in,check_out,
          is_hourly,adults,children,total_price,status,payment_method,notes,internal_notes,created_by)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
     ->execute([
-        $resourceId, $guestName,
+        $resourceId, $clientId, $guestName,
         trim($b['guest_email']  ?? ''),
         trim($b['guest_phone']  ?? ''),
         trim($b['guest_doc']    ?? ''),
@@ -145,8 +175,9 @@ if ($method === 'POST' && $action === 'create') {
     ]);
     $newId = $db->lastInsertId();
 
-    // Guardar extras
+    // Guardar extras y acompañantes de esta estadía
     if (!empty($b['extras'])) saveExtras($db, $newId, $b['extras']);
+    if (array_key_exists('guests', $b)) saveReservationGuests($db, $newId, $b['guests']);
 
     $st = $db->prepare("SELECT r.*, res.name as resource_name, res.color as resource_color,
                                res.price_per_day, res.price_per_hour
@@ -181,7 +212,7 @@ if ($method === 'PUT' && $action === 'update') {
     }
 
     $sets = []; $vals = [];
-    $allowed = ['resource_id','guest_name','guest_email','guest_phone','guest_doc','check_in','check_out',
+    $allowed = ['resource_id','client_id','guest_name','guest_email','guest_phone','guest_doc','check_in','check_out',
                 'is_hourly','adults','children','total_price','status','payment_method',
                 'payment_id','notes','internal_notes'];
     foreach ($allowed as $f) {
@@ -192,6 +223,7 @@ if ($method === 'PUT' && $action === 'update') {
         $db->prepare("UPDATE reservations SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
     }
     if (array_key_exists('extras', $b)) saveExtras($db, $id, $b['extras']);
+    if (array_key_exists('guests', $b)) saveReservationGuests($db, $id, $b['guests']);
 
     rtOut(['ok' => true]);
 }

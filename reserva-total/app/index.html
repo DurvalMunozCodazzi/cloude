@@ -286,6 +286,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <div class="tb-sep"></div>
     <button class="btn-icon" onclick="toggleResourcesPanel()" title="Gestionar recursos"><i class="fas fa-bed"></i></button>
     <button class="btn-icon" id="extrasBtn" onclick="openExtrasCatalogModal()" title="Catálogo de Extras" style="display:none"><i class="fas fa-concierge-bell"></i></button>
+    <button class="btn-icon" id="clientsBtn" onclick="openClientsModal()" title="Clientes" style="display:none"><i class="fas fa-address-book"></i></button>
     <button class="btn-icon" id="usersBtn" onclick="openUsersModal()" title="Usuarios" style="display:none"><i class="fas fa-users"></i></button>
     <button class="btn-icon" id="smtpBtn" onclick="openSmtpModal()" title="Configuración SMTP" style="display:none"><i class="fas fa-cog"></i></button>
     <div class="tb-spacer"></div>
@@ -377,6 +378,15 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <div class="fg">
       <label>Recurso *</label>
       <select id="mrResource"></select>
+    </div>
+    <div class="fg">
+      <label>Cliente <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(opcional — buscá uno existente o dejá el nombre libre abajo)</span></label>
+      <input id="mrClientSearch" type="text" list="clientsDatalist" placeholder="Buscar cliente por nombre o DNI..." oninput="onClientSearchInput()">
+      <datalist id="clientsDatalist"></datalist>
+      <div id="mrCompanionsBox" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">¿Quién viene en esta estadía?</div>
+        <div id="mrCompanionsList"></div>
+      </div>
     </div>
     <div class="fg">
       <label>Nombre del huésped *</label>
@@ -493,6 +503,67 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeMo('moResource')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveResource()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CLIENTES -->
+<div class="modal-overlay" id="moClients">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-address-book" style="color:var(--acc)"></i> Clientes</div>
+      <button class="btn-icon" onclick="closeMo('moClients')"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Vista: listado -->
+    <div id="clientsListView">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="text" id="clSearch" placeholder="Buscar por nombre, DNI, email o teléfono..." oninput="searchClients()">
+        <button class="btn btn-primary btn-sm" onclick="openNewClient()" style="white-space:nowrap"><i class="fas fa-plus"></i> Nuevo</button>
+      </div>
+      <div id="clientsListEl" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+
+    <!-- Vista: detalle / alta / edición -->
+    <div id="clientDetailView" style="display:none">
+      <button class="btn btn-secondary btn-sm" style="margin-bottom:14px" onclick="closeClientDetail()"><i class="fas fa-arrow-left"></i> Volver al listado</button>
+
+      <div class="row2">
+        <div class="fg"><label>Nombre *</label><input id="clFirstName" type="text" placeholder="Juan"></div>
+        <div class="fg"><label>Apellido</label><input id="clLastName" type="text" placeholder="Pérez"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>DNI</label><input id="clDni" type="text" placeholder="30111222"></div>
+        <div class="fg"><label>Teléfono / Celular</label><input id="clPhone" type="text" placeholder="+54 9 11..."></div>
+      </div>
+      <div class="fg"><label>Email</label><input id="clEmail" type="email" placeholder="cliente@email.com"></div>
+      <div class="fg"><label>Dirección</label><input id="clAddress" type="text" placeholder="Calle 123, Ciudad"></div>
+      <div class="fg"><label>Notas</label><textarea id="clNotes" rows="2" placeholder="Notas internas sobre el cliente..."></textarea></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveClient()"><i class="fas fa-save"></i> Guardar</button>
+        <button class="btn btn-danger btn-sm" id="clDeleteBtn" style="display:none" onclick="deleteClient()"><i class="fas fa-trash"></i> Eliminar cliente</button>
+      </div>
+
+      <!-- Grupo familiar / acompañantes -->
+      <div id="clCompanionsSection" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)">
+        <div class="sp-label" style="margin-bottom:8px">Grupo familiar / Acompañantes</div>
+        <div id="clCompanionsList" style="margin-bottom:10px"></div>
+        <div class="row2">
+          <input type="text" id="ccFirstName" placeholder="Nombre">
+          <input type="text" id="ccLastName" placeholder="Apellido">
+        </div>
+        <div class="row2">
+          <input type="text" id="ccDni" placeholder="DNI (opcional)">
+          <input type="text" id="ccRelationship" placeholder="Vínculo (ej: Cónyuge, Hijo/a)">
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addCompanion()"><i class="fas fa-user-plus"></i> Agregar acompañante</button>
+      </div>
+
+      <!-- Historial de reservas / gastos -->
+      <div id="clHistorySection" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)">
+        <div class="sp-label" style="margin-bottom:8px">Historial de alquileres y consumos</div>
+        <div id="clHistoryList"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -772,6 +843,7 @@ async function afterLogin() {
   av.textContent = (CURRENT_USER.name||'A')[0].toUpperCase();
   av.style.background = CURRENT_USER.color || '#0d9488';
   un.textContent = CURRENT_USER.name || CURRENT_USER.username;
+  document.getElementById('clientsBtn').style.display = '';
   if (CURRENT_USER.role === 'admin') {
     document.getElementById('usersBtn').style.display = '';
     document.getElementById('extrasBtn').style.display = '';
@@ -999,6 +1071,12 @@ async function openReservationDetail(id) {
       ${rv.guest_email ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-envelope" style="width:16px"></i> ${esc(rv.guest_email)}</div>` : ''}
       ${rv.guest_phone ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-phone" style="width:16px"></i> ${esc(rv.guest_phone)}</div>` : ''}
       ${rv.guest_doc   ? `<div style="font-size:12px;color:var(--t2)"><i class="fas fa-id-card" style="width:16px"></i> ${esc(rv.guest_doc)}</div>` : ''}
+      ${rv.guests && rv.guests.length ? `<div style="font-size:12px;color:var(--t2);margin-top:4px"><i class="fas fa-users" style="width:16px"></i> Con: ${rv.guests.map(g=>esc(g.first_name)).join(', ')}</div>` : ''}
+    </div>` : ''}
+    ${rv.client_id ? `
+    <div class="sp-section" style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;color:var(--t2)"><i class="fas fa-address-card" style="width:16px"></i> Ficha de cliente: <strong style="color:var(--t1)">${esc(rv.client_name||'')}</strong></div>
+      <button class="btn btn-secondary btn-sm" onclick="openClientsModal().then(()=>openClientDetail(${rv.client_id}))">Ver ficha</button>
     </div>` : ''}
     <div class="sp-section">
       <div class="sp-grid" style="margin-bottom:8px">
@@ -1101,6 +1179,11 @@ function openNewReservation(resourceId = null, dateStr = null) {
   renderCatalogGrid();
   renderExtrasSelected();
 
+  RESERVATION_CLIENT_ID = null;
+  document.getElementById('mrClientSearch').value = '';
+  document.getElementById('mrCompanionsBox').style.display = 'none';
+  loadClientsForReservationForm();
+
   if (resourceId) {
     document.getElementById('mrResource').value = resourceId;
   }
@@ -1130,6 +1213,15 @@ async function openEditReservation(id) {
   document.getElementById('priceCalcHint').style.display = 'none';
   loadExtrasFromData(rv.extras || []);
   renderCatalogGrid();
+
+  RESERVATION_CLIENT_ID = rv.client_id || null;
+  document.getElementById('mrClientSearch').value = rv.client_name || '';
+  document.getElementById('mrCompanionsBox').style.display = 'none';
+  await loadClientsForReservationForm();
+  if (RESERVATION_CLIENT_ID) {
+    const selectedIds = (rv.guests || []).map(g => g.id);
+    await loadCompanionsChecklist(RESERVATION_CLIENT_ID, selectedIds);
+  }
   // Parse MySQL datetime → dd/mm/yyyy HH:MM for Flatpickr
   const parseMySQLtoFP = s => {
     if (!s) return '';
@@ -1149,6 +1241,61 @@ async function openEditReservation(id) {
   openMo('moReserva');
 }
 
+// ── Cliente + acompañantes dentro del formulario de reserva ───────────────
+let RESERVATION_CLIENT_ID = null;
+let CLIENTS_CACHE = [];
+
+async function loadClientsForReservationForm() {
+  try {
+    const d = await api('clients.php?action=list');
+    CLIENTS_CACHE = d.clients || [];
+    document.getElementById('clientsDatalist').innerHTML =
+      CLIENTS_CACHE.map(c => `<option value="${esc((c.first_name+' '+(c.last_name||'')).trim())}">`).join('');
+  } catch(e) { CLIENTS_CACHE = []; }
+}
+
+function findClientByDisplayName(text) {
+  const norm = text.trim().toLowerCase();
+  if (!norm) return null;
+  return CLIENTS_CACHE.find(c => (c.first_name+' '+(c.last_name||'')).trim().toLowerCase() === norm);
+}
+
+async function onClientSearchInput() {
+  const text  = document.getElementById('mrClientSearch').value;
+  const match = findClientByDisplayName(text);
+  if (!match) {
+    RESERVATION_CLIENT_ID = null;
+    document.getElementById('mrCompanionsBox').style.display = 'none';
+    return;
+  }
+  RESERVATION_CLIENT_ID = match.id;
+  if (!document.getElementById('mrName').value.trim())  document.getElementById('mrName').value  = text;
+  if (!document.getElementById('mrEmail').value.trim() && match.email) document.getElementById('mrEmail').value = match.email;
+  if (!document.getElementById('mrPhone').value.trim() && match.phone) document.getElementById('mrPhone').value = match.phone;
+  if (!document.getElementById('mrDoc').value.trim()   && match.dni)   document.getElementById('mrDoc').value   = match.dni;
+  await loadCompanionsChecklist(match.id, []);
+}
+
+async function loadCompanionsChecklist(clientId, selectedIds) {
+  const box  = document.getElementById('mrCompanionsBox');
+  const list = document.getElementById('mrCompanionsList');
+  try {
+    const d = await api('clients.php?action=get&id=' + clientId);
+    const companions = (d.client && d.client.companions) || [];
+    if (!companions.length) { box.style.display = 'none'; return; }
+    list.innerHTML = companions.map(p => `
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);margin-bottom:4px;cursor:pointer">
+        <input type="checkbox" class="mr-companion-cb" value="${p.id}" ${selectedIds.includes(p.id)?'checked':''}>
+        ${esc(p.first_name)} ${esc(p.last_name||'')}${p.relationship?' · '+esc(p.relationship):''}
+      </label>`).join('');
+    box.style.display = '';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+function getSelectedCompanionIds() {
+  return [...document.querySelectorAll('.mr-companion-cb:checked')].map(cb => parseInt(cb.value));
+}
+
 function fpToMySQL(s) {
   // Converts "28/05/2026 14:00" → "2026-05-28 14:00:00"
   if (!s) return '';
@@ -1160,6 +1307,7 @@ function fpToMySQL(s) {
 async function saveReservation() {
   const body = {
     resource_id:    parseInt(document.getElementById('mrResource').value),
+    client_id:      RESERVATION_CLIENT_ID,
     guest_name:     document.getElementById('mrName').value.trim(),
     guest_email:    document.getElementById('mrEmail').value.trim(),
     guest_phone:    document.getElementById('mrPhone').value.trim(),
@@ -1174,6 +1322,7 @@ async function saveReservation() {
     notes:          document.getElementById('mrNotes').value,
     internal_notes: document.getElementById('mrInternal').value,
     extras:         getExtrasPayload(),
+    guests:         getSelectedCompanionIds(),
   };
   if (!body.guest_name) { notify('El nombre del huésped es requerido', 'er'); return; }
   if (!body.check_in || !body.check_out) { notify('Ingresá las fechas de entrada y salida', 'er'); return; }
@@ -1387,12 +1536,194 @@ async function deleteUser(id, name) {
   } catch(e) { notify(e.message, 'er'); }
 }
 
+// ── CLIENTES ──────────────────────────────────────────────────────────────
+let currentClientId = null;
+let clientSearchTimer = null;
+
+async function openClientsModal() {
+  currentClientId = null;
+  document.getElementById('clSearch').value = '';
+  document.getElementById('clientsListView').style.display = '';
+  document.getElementById('clientDetailView').style.display = 'none';
+  await searchClients();
+  openMo('moClients');
+}
+
+async function searchClients() {
+  clearTimeout(clientSearchTimer);
+  clientSearchTimer = setTimeout(async () => {
+    const q = document.getElementById('clSearch').value.trim();
+    try {
+      const d = await api('clients.php?action=list' + (q ? '&q=' + encodeURIComponent(q) : ''));
+      renderClientsList(d.clients || []);
+    } catch(e) { notify(e.message, 'er'); }
+  }, 200);
+}
+
+function renderClientsList(clients) {
+  const el = document.getElementById('clientsListEl');
+  if (!clients.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--t3);padding:12px 0">No hay clientes cargados todavía.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  clients.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'user-row';
+    row.style.cursor = 'pointer';
+    row.onclick = () => openClientDetail(c.id);
+    row.innerHTML = `
+      <div class="user-av" style="background:#0d9488">${(c.first_name||'C')[0].toUpperCase()}</div>
+      <div class="user-info">
+        <div class="user-name">${esc(c.first_name)} ${esc(c.last_name||'')}</div>
+        <div class="user-role">${c.dni ? 'DNI '+esc(c.dni)+' · ' : ''}${esc(c.phone||c.email||'')}</div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:var(--t3);font-size:11px"></i>`;
+    el.appendChild(row);
+  });
+}
+
+function openNewClient() {
+  currentClientId = null;
+  ['clFirstName','clLastName','clDni','clPhone','clEmail','clAddress','clNotes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('clCompanionsSection').style.display = 'none';
+  document.getElementById('clHistorySection').style.display = 'none';
+  document.getElementById('clDeleteBtn').style.display = 'none';
+  document.getElementById('clientsListView').style.display = 'none';
+  document.getElementById('clientDetailView').style.display = '';
+}
+
+async function openClientDetail(id) {
+  try {
+    const d = await api('clients.php?action=get&id=' + id);
+    const c = d.client;
+    currentClientId = c.id;
+    document.getElementById('clFirstName').value = c.first_name || '';
+    document.getElementById('clLastName').value  = c.last_name  || '';
+    document.getElementById('clDni').value       = c.dni        || '';
+    document.getElementById('clPhone').value     = c.phone      || '';
+    document.getElementById('clEmail').value     = c.email      || '';
+    document.getElementById('clAddress').value   = c.address    || '';
+    document.getElementById('clNotes').value     = c.notes      || '';
+
+    renderCompanionsList(c.companions || []);
+    renderClientHistory(c.reservations || []);
+
+    document.getElementById('clCompanionsSection').style.display = '';
+    document.getElementById('clHistorySection').style.display = '';
+    document.getElementById('clDeleteBtn').style.display = '';
+    document.getElementById('clientsListView').style.display = 'none';
+    document.getElementById('clientDetailView').style.display = '';
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function closeClientDetail() {
+  document.getElementById('clientsListView').style.display = '';
+  document.getElementById('clientDetailView').style.display = 'none';
+  searchClients();
+}
+
+async function saveClient() {
+  const body = {
+    first_name: document.getElementById('clFirstName').value.trim(),
+    last_name:  document.getElementById('clLastName').value.trim(),
+    dni:        document.getElementById('clDni').value.trim(),
+    phone:      document.getElementById('clPhone').value.trim(),
+    email:      document.getElementById('clEmail').value.trim(),
+    address:    document.getElementById('clAddress').value.trim(),
+    notes:      document.getElementById('clNotes').value.trim(),
+  };
+  if (!body.first_name) { notify('El nombre es requerido', 'er'); return; }
+  try {
+    if (currentClientId) {
+      await api('clients.php?action=update&id=' + currentClientId, 'PUT', body);
+      notify('Cliente actualizado', 'ok');
+      openClientDetail(currentClientId);
+    } else {
+      const d = await api('clients.php?action=create', 'POST', body);
+      notify('Cliente creado', 'ok');
+      openClientDetail(d.id);
+    }
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteClient() {
+  if (!currentClientId) return;
+  if (!confirm('¿Eliminar este cliente? El historial de reservas anteriores no se borra.')) return;
+  try {
+    await api('clients.php?action=delete&id=' + currentClientId, 'DELETE');
+    notify('Cliente eliminado', 'wa');
+    closeClientDetail();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function renderCompanionsList(companions) {
+  const el = document.getElementById('clCompanionsList');
+  if (!companions.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--t3);margin-bottom:6px">Sin acompañantes cargados.</div>';
+    return;
+  }
+  el.innerHTML = companions.map(p => `
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:6px">
+      <span>${esc(p.first_name)} ${esc(p.last_name||'')}${p.relationship ? ' · '+esc(p.relationship) : ''}${p.dni ? ' · DNI '+esc(p.dni) : ''}</span>
+      <button class="btn-icon btn-sm" onclick="deleteCompanion(${p.id})" title="Eliminar"><i class="fas fa-times" style="color:#ef4444"></i></button>
+    </div>`).join('');
+}
+
+async function addCompanion() {
+  if (!currentClientId) return;
+  const body = {
+    first_name:   document.getElementById('ccFirstName').value.trim(),
+    last_name:    document.getElementById('ccLastName').value.trim(),
+    dni:          document.getElementById('ccDni').value.trim(),
+    relationship: document.getElementById('ccRelationship').value.trim(),
+  };
+  if (!body.first_name) { notify('El nombre del acompañante es requerido', 'er'); return; }
+  try {
+    const d = await api('clients.php?action=add_companion&client_id=' + currentClientId, 'POST', body);
+    renderCompanionsList(d.companions || []);
+    ['ccFirstName','ccLastName','ccDni','ccRelationship'].forEach(id => document.getElementById(id).value = '');
+    notify('Acompañante agregado', 'ok');
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteCompanion(id) {
+  if (!confirm('¿Eliminar este acompañante?')) return;
+  try {
+    await api('clients.php?action=delete_companion&id=' + id, 'DELETE');
+    notify('Acompañante eliminado', 'wa');
+    openClientDetail(currentClientId);
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function renderClientHistory(reservations) {
+  const el = document.getElementById('clHistoryList');
+  if (!reservations.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--t3)">Sin reservas registradas todavía.</div>';
+    return;
+  }
+  el.innerHTML = reservations.map(r => {
+    const fIn  = fmtDate(r.check_in);
+    const fOut = fmtDate(r.check_out);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+      <div>
+        <div style="font-weight:700;color:var(--t1)">${esc(r.resource_name)}</div>
+        <div>${fIn} → ${fOut} · ${STATUS_LABELS[r.status]||r.status}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700;color:var(--t1)">$${fmt(r.grand_total)}</div>
+        <div style="color:${r.balance>0?'var(--cancelled)':'var(--confirmed)'}">${r.balance>0?'Saldo: $'+fmt(r.balance):'Saldado'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── MODAL HELPERS ─────────────────────────────────────────────────────────
 function openMo(id) { document.getElementById(id).classList.add('on'); }
 function closeMo(id) { document.getElementById(id).classList.remove('on'); }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['moReserva','moResource','moUsers','moExtrasCatalog'].forEach(m => {
+    ['moReserva','moResource','moUsers','moExtrasCatalog','moClients'].forEach(m => {
       if (document.getElementById(m).classList.contains('on')) closeMo(m);
     });
     closeSidePanel();

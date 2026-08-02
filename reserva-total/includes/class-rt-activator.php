@@ -72,6 +72,7 @@ class RT_Activator {
         $wpdb->query("CREATE TABLE IF NOT EXISTS `reservations` (
             `id`             INT NOT NULL AUTO_INCREMENT,
             `resource_id`    INT NOT NULL,
+            `client_id`      INT          DEFAULT NULL,
             `guest_name`     VARCHAR(200) NOT NULL,
             `guest_email`    VARCHAR(200) DEFAULT NULL,
             `guest_phone`    VARCHAR(50)  DEFAULT NULL,
@@ -92,8 +93,45 @@ class RT_Activator {
             `updated_at`     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             KEY `resource_id` (`resource_id`),
+            KEY `client_id`   (`client_id`),
             KEY `check_in`    (`check_in`),
             KEY `status`      (`status`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `clients` (
+            `id`         INT NOT NULL AUTO_INCREMENT,
+            `first_name` VARCHAR(120) NOT NULL,
+            `last_name`  VARCHAR(120) DEFAULT '',
+            `dni`        VARCHAR(30)  DEFAULT '',
+            `address`    VARCHAR(300) DEFAULT '',
+            `email`      VARCHAR(200) DEFAULT '',
+            `phone`      VARCHAR(50)  DEFAULT '',
+            `notes`      TEXT         DEFAULT NULL,
+            `active`     TINYINT DEFAULT 1,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `dni`   (`dni`),
+            KEY `email` (`email`),
+            KEY `phone` (`phone`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `client_companions` (
+            `id`           INT NOT NULL AUTO_INCREMENT,
+            `client_id`    INT NOT NULL,
+            `first_name`   VARCHAR(120) NOT NULL,
+            `last_name`    VARCHAR(120) DEFAULT '',
+            `dni`          VARCHAR(30)  DEFAULT '',
+            `relationship` VARCHAR(80)  DEFAULT '',
+            `created_at`   DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `client_id` (`client_id`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `reservation_guests` (
+            `reservation_id` INT NOT NULL,
+            `companion_id`   INT NOT NULL,
+            PRIMARY KEY (`reservation_id`,`companion_id`)
         ) $charset");
 
         $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_settings` (
@@ -145,6 +183,17 @@ class RT_Activator {
 
         self::migrate_extras_catalog();
         self::migrate_users();
+        self::migrate_reservations();
+    }
+
+    // client_id, para instalaciones de reservations creadas antes del ABM
+    // de clientes.
+    private static function migrate_reservations() {
+        global $wpdb;
+        $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `reservations`", ARRAY_A), 'Field');
+        if (!in_array('client_id', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `client_id` INT DEFAULT NULL, ADD KEY `client_id` (`client_id`)");
+        }
     }
 
     // Columnas de recuperación de contraseña, para instalaciones de rt_users
