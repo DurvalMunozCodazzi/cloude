@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      2.13.0
+ * Version:      2.13.1
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '2.13.0');
+define('RT_VERSION',    '2.13.1');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
@@ -27,12 +27,22 @@ register_deactivation_hook(__FILE__, ['RT_Activator', 'deactivate']);
 
 // Autoreparación: WordPress solo dispara register_activation_hook al pasar de
 // desactivado a activado — actualizar el plugin reemplazando sus archivos
-// (sin desactivar primero) NO vuelve a correrlo, así que app/rt-config.php
-// puede quedar sin generarse tras una actualización. Esto lo verifica en
-// cada carga de WordPress y lo regenera solo si falta, sin depender de que
+// (sin desactivar primero) NO vuelve a correrlo, así que tablas nuevas de la
+// base de datos o app/rt-config.php pueden quedar sin crearse/generarse tras
+// una actualización. Esto corre RT_Activator::activate() completo (crear
+// tablas, migraciones, config) en cada carga de WordPress SI la versión
+// instalada cambió — todo dentro es seguro de repetir (CREATE TABLE IF NOT
+// EXISTS, ALTER solo si falta la columna) — así que nunca depende de que
 // alguien recuerde desactivar/reactivar manualmente.
-add_action('plugins_loaded', 'rt_maybe_regenerate_config');
-function rt_maybe_regenerate_config() {
+add_action('plugins_loaded', 'rt_maybe_upgrade');
+function rt_maybe_upgrade() {
+    if (get_option('rt_installed_version') !== RT_VERSION) {
+        RT_Activator::activate();
+        update_option('rt_installed_version', RT_VERSION);
+    }
+    // Red de seguridad aparte: si el archivo de config se borró o falló su
+    // escritura en un intento anterior, regenerarlo aunque la versión no
+    // haya cambiado.
     if (!file_exists(RT_APP_DIR . 'rt-config.php')) {
         RT_Activator::regenerate_app_config();
     }
