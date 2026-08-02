@@ -234,6 +234,17 @@ class RT_Activator {
             KEY `min_nights` (`min_nights`)
         ) $charset");
 
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `resource_photos` (
+            `id`          INT NOT NULL AUTO_INCREMENT,
+            `resource_id` INT NOT NULL,
+            `filename`    VARCHAR(255) NOT NULL,
+            `caption`     VARCHAR(200) DEFAULT '',
+            `position`    INT DEFAULT 0,
+            `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `resource_id` (`resource_id`)
+        ) $charset");
+
         $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_checkin_submissions` (
             `id`             INT NOT NULL AUTO_INCREMENT,
             `reservation_id` INT NOT NULL,

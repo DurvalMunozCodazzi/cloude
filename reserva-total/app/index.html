@@ -528,6 +528,15 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <div class="color-opts" id="resColorOpts"></div>
       <input type="hidden" id="resColor" value="#0d9488">
     </div>
+    <div class="fg" id="resPhotosSection" style="display:none">
+      <label>Fotos <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(se muestran en la página de reserva online — habitación, baño, cocina, etc.)</span></label>
+      <div id="resPhotosGrid" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="file" id="resPhotoFile" accept="image/jpeg,image/png,image/webp" style="flex:1;font-size:12px">
+        <input type="text" id="resPhotoCaption" placeholder="Epígrafe (ej: Baño)" style="flex:1">
+        <button type="button" class="btn btn-secondary btn-sm" id="resPhotoUpBtn" onclick="uploadResourcePhoto()"><i class="fas fa-upload"></i> Subir</button>
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeMo('moResource')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveResource()"><i class="fas fa-save"></i> Guardar</button>
@@ -1698,7 +1707,66 @@ function openResourceModal(id = null) {
   document.getElementById('resCap').value = r ? (r.capacity||1) : 1;
   document.getElementById('resColor').value = r ? (r.color||'#0d9488') : '#0d9488';
   renderColorOpts(r ? r.color : '#0d9488');
+  const phSection = document.getElementById('resPhotosSection');
+  if (id && CURRENT_USER && CURRENT_USER.role === 'admin') {
+    phSection.style.display = '';
+    loadResourcePhotos(id);
+  } else {
+    phSection.style.display = 'none';
+  }
   openMo('moResource');
+}
+
+// ── Galería de fotos del recurso ──────────────────────────────────────────
+async function loadResourcePhotos(resourceId) {
+  const grid = document.getElementById('resPhotosGrid');
+  grid.innerHTML = '<div style="font-size:12px;color:var(--t3)">Cargando fotos...</div>';
+  try {
+    const d = await api('photos.php?action=list&resource_id=' + resourceId);
+    const photos = d.photos || [];
+    grid.innerHTML = photos.length ? photos.map(p => `
+      <div style="position:relative;width:110px">
+        <img src="uploads/${encodeURIComponent(p.filename)}" style="width:110px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--bdr)">
+        <button type="button" class="btn-icon btn-sm" onclick="deleteResourcePhoto(${p.id})" title="Eliminar foto"
+          style="position:absolute;top:2px;right:2px;background:rgba(255,255,255,.9);border-radius:6px"><i class="fas fa-times" style="color:#ef4444"></i></button>
+        ${p.caption ? `<div style="font-size:10px;color:var(--t3);margin-top:2px;text-align:center">${esc(p.caption)}</div>` : ''}
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin fotos todavía — subí la primera</div>';
+  } catch(e) { grid.innerHTML = `<div style="font-size:12px;color:var(--cancelled)">${esc(e.message)}</div>`; }
+}
+
+async function uploadResourcePhoto() {
+  if (!editResourceId) return;
+  const fileInput = document.getElementById('resPhotoFile');
+  if (!fileInput.files.length) { notify('Elegí una foto primero', 'er'); return; }
+  const btn = document.getElementById('resPhotoUpBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const fd = new FormData();
+    fd.append('resource_id', editResourceId);
+    fd.append('caption', document.getElementById('resPhotoCaption').value.trim());
+    fd.append('photo', fileInput.files[0]);
+    const res = await fetch(BASE + 'photos.php?action=upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+    notify('Foto subida', 'ok');
+    fileInput.value = '';
+    document.getElementById('resPhotoCaption').value = '';
+    await loadResourcePhotos(editResourceId);
+  } catch(e) { notify(e.message, 'er'); }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> Subir';
+}
+
+async function deleteResourcePhoto(photoId) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  try {
+    await api('photos.php?action=delete&id=' + photoId, 'DELETE');
+    notify('Foto eliminada', 'wa');
+    await loadResourcePhotos(editResourceId);
+  } catch(e) { notify(e.message, 'er'); }
 }
 
 function renderColorOpts(selected) {

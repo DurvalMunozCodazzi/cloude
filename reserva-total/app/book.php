@@ -22,12 +22,21 @@ $status = $_GET['status'] ?? '';
   input,select{width:100%;padding:10px 12px;border:1px solid #e1e4ec;border-radius:8px;font-size:14px;background:#fff}
   .row{display:flex;gap:10px}
   .row > div{flex:1}
-  .res-card{display:flex;align-items:center;gap:12px;border:2px solid #e1e4ec;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:.15s}
+  .res-card{border:2px solid #e1e4ec;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:.15s}
   .res-card:hover{border-color:#0d948880}
   .res-card.sel{border-color:#0d9488;background:#0d948810}
+  .res-head{display:flex;align-items:center;gap:12px}
   .res-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
   .res-nm{font-weight:700;font-size:14px}
   .res-pr{font-size:12px;color:#767b90}
+  .res-desc{font-size:12px;color:#4a4f63;margin-top:8px;line-height:1.5}
+  .res-photos{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
+  .res-photos img{width:120px;height:85px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid #e1e4ec}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:99;flex-direction:column;padding:20px}
+  .lightbox.on{display:flex}
+  .lightbox img{max-width:95vw;max-height:80vh;border-radius:10px}
+  .lightbox .cap{color:#fff;font-size:13px;margin-top:10px}
+  .lightbox .close{position:absolute;top:14px;right:18px;color:#fff;font-size:28px;cursor:pointer;background:none;border:none;width:auto;margin:0;padding:4px 10px}
   .quote{background:#f8fffe;border:1px solid #0d948840;border-radius:10px;padding:14px;margin-top:16px;display:none}
   .quote .line{display:flex;justify-content:space-between;font-size:13px;color:#4a4f63;margin-bottom:6px}
   .quote .total{display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#0d9488;border-top:1px solid #0d948840;padding-top:8px;margin-top:4px}
@@ -96,6 +105,12 @@ $status = $_GET['status'] ?? '';
   <div class="foot">Reserva Total · reservas seguras con Mercado Pago</div>
 </div>
 
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="close" onclick="closeLightbox()">&times;</button>
+  <img id="lbImg" src="" alt="">
+  <div class="cap" id="lbCap"></div>
+</div>
+
 <script>
 const API = 'api/booking_public.php';
 let RESOURCES = [], SELECTED = null, QUOTE = null, MP_ENABLED = false, DEPOSIT_PCT = 30;
@@ -119,11 +134,20 @@ async function jget(url) {
       const div = document.createElement('div');
       div.className = 'res-card';
       div.id = 'res' + r.id;
-      div.innerHTML = `<div class="res-dot" style="background:${r.color||'#0d9488'}"></div>
-        <div style="flex:1">
-          <div class="res-nm">${esc(r.name)}</div>
-          <div class="res-pr">Hasta ${r.capacity} persona(s) · desde $${fmt(r.price_per_day)}/noche</div>
-        </div>`;
+      const photos = r.photos || [];
+      div.innerHTML = `
+        <div class="res-head">
+          <div class="res-dot" style="background:${r.color||'#0d9488'}"></div>
+          <div style="flex:1">
+            <div class="res-nm">${esc(r.name)}</div>
+            <div class="res-pr">Hasta ${r.capacity} persona(s) · desde $${fmt(r.price_per_day)}/noche</div>
+          </div>
+        </div>
+        ${r.description ? `<div class="res-desc">${esc(r.description)}</div>` : ''}
+        ${photos.length ? `<div class="res-photos">` + photos.map(p =>
+          `<img src="uploads/${encodeURIComponent(p.filename)}" alt="${esc(p.caption||r.name)}" loading="lazy"
+                onclick="openLightbox(event, 'uploads/${encodeURIComponent(p.filename)}', '${esc(p.caption||'')}')">`
+        ).join('') + `</div>` : ''}`;
       div.onclick = () => { SELECTED = r.id;
         document.querySelectorAll('.res-card').forEach(c => c.classList.remove('sel'));
         div.classList.add('sel'); refreshQuote(); };
@@ -139,7 +163,18 @@ async function jget(url) {
   document.getElementById('bkOut').onchange = refreshQuote;
 })();
 
-function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function openLightbox(ev, src, caption) {
+  ev.stopPropagation(); // no seleccionar el alojamiento al ampliar una foto
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbCap').textContent = caption || '';
+  document.getElementById('lightbox').classList.add('on');
+}
+function closeLightbox(ev) {
+  if (ev && ev.target && ev.target.id === 'lbImg') return; // clic sobre la foto no cierra
+  document.getElementById('lightbox').classList.remove('on');
+}
 function fmt(n){ n = parseFloat(n||0); return n.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2}); }
 function dates() {
   const i = document.getElementById('bkIn').value, o = document.getElementById('bkOut').value;

@@ -14,6 +14,15 @@ $action = $_GET['action'] ?? '';
 if ($method === 'GET' && $action === 'resources') {
     $rows = $db->query("SELECT id, name, description, type, price_per_day, capacity, color, photo
                          FROM resources WHERE active=1 ORDER BY position, name")->fetchAll();
+
+    // Galería de fotos de cada recurso (solo nombre de archivo + epígrafe)
+    $phSt = $db->prepare("SELECT filename, caption FROM resource_photos WHERE resource_id=? ORDER BY position, id");
+    foreach ($rows as &$r) {
+        $phSt->execute([$r['id']]);
+        $r['photos'] = $phSt->fetchAll();
+    }
+    unset($r);
+
     $mp = getMpConfig($db);
     rtOut([
         'resources'   => $rows,
