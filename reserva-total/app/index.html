@@ -435,14 +435,12 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addCustomExtra()">
         <i class="fas fa-plus"></i> Extra personalizado
       </button>
+      <datalist id="productsDatalist"></datalist>
       <div class="extras-selected" id="extrasSelected" style="display:none"></div>
-      <div class="extras-total-row" id="extrasTotal" style="display:none">
-        <div>
-          <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Total general</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:2px" id="extrasTotalBreak"></div>
-        </div>
-        <div class="grand" id="extrasTotalAmt"></div>
-      </div>
+      <div id="mrAccountDetail" style="display:none;margin-top:10px;border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;background:var(--accg)"></div>
+      <button type="button" class="btn btn-primary btn-sm" id="btnSaveExtras" style="display:none;width:100%;justify-content:center;margin-top:8px" onclick="saveExtrasNow()">
+        <i class="fas fa-check"></i> Confirmar consumos
+      </button>
     </div>
     <div class="fg" id="mrPaymentsSection" style="display:none">
       <label>Pagos</label>
@@ -1282,6 +1280,8 @@ function openNewReservation(resourceId = null, dateStr = null) {
   if (fpOut) fpOut.clear();
   document.getElementById('priceCalcHint').style.display = 'none';
   extrasData = [];
+  LAST_PAID = 0;
+  document.getElementById('btnSaveExtras').style.display = 'none';
   renderCatalogGrid();
   renderExtrasSelected();
 
@@ -1318,6 +1318,8 @@ async function openEditReservation(id) {
   document.getElementById('mrPhone').value = rv.guest_phone || '';
   document.getElementById('mrDoc').value = rv.guest_doc || '';
   document.getElementById('priceCalcHint').style.display = 'none';
+  LAST_PAID = rv.paid_total != null ? parseFloat(rv.paid_total) : (rv.payments||[]).reduce((s,p)=>s+parseFloat(p.amount||0),0);
+  document.getElementById('btnSaveExtras').style.display = '';
   loadExtrasFromData(rv.extras || []);
   renderCatalogGrid();
 
@@ -1416,6 +1418,8 @@ function renderReservationPayments(rv) {
     <span style="color:${balance>0?'#ef4444':'#16a34a'}">$${fmt(balance>0?balance:paid)}</span>
   </div>`;
   document.getElementById('mrPaymentsList').innerHTML = html;
+  LAST_PAID = paid;
+  updateExtrasTotal();
 }
 
 // ── Cliente + acompañantes dentro del formulario de reserva ───────────────
@@ -2356,6 +2360,8 @@ async function loadExtrasCatalog() {
 // Render catalog grid inside reservation modal
 function renderCatalogGrid() {
   const el = document.getElementById('catalogGrid');
+  const dl = document.getElementById('productsDatalist');
+  if (dl) dl.innerHTML = EXTRAS_CATALOG.map(c => `<option value="${esc(c.name)}">`).join('');
   if (!EXTRAS_CATALOG.length) {
     el.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:6px 0">Sin extras en el catálogo. Agregá desde el ícono <i class="fas fa-concierge-bell"></i> en la barra superior.</div>';
     return;
@@ -2451,9 +2457,9 @@ function renderExtrasSelected() {
       // Extra personalizado — campos editables
       row.style.cssText = 'flex-wrap:wrap;gap:6px;padding:8px 10px';
       row.innerHTML = `
-        <input class="es-custom-name" type="text" placeholder="Descripción del extra"
-               value="${esc(ex.name)}"
-               onchange="extrasData[${i}].name=this.value;updateExtrasTotal()"
+        <input class="es-custom-name" type="text" placeholder="Buscar producto o describir extra..."
+               value="${esc(ex.name)}" list="productsDatalist"
+               oninput="onCustomExtraName(${i},this.value)"
                style="flex:1;min-width:120px;font-size:12px">
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
           <span style="font-size:11px;color:var(--t3)">$</span>
@@ -2478,21 +2484,73 @@ function renderExtrasSelected() {
   updateExtrasTotal();
 }
 
+let LAST_PAID = 0;
+
 function updateExtrasTotal() {
+  const box    = document.getElementById('mrAccountDetail');
   const base   = parseFloat(document.getElementById('mrPrice').value) || 0;
   const extAmt = extrasData.reduce((s, ex) => s + (parseFloat(ex.price)||0) * (parseInt(ex.qty)||1), 0);
   const grand  = base + extAmt;
-  const totalEl = document.getElementById('extrasTotal');
-  if (extrasData.length > 0 || base > 0) {
-    totalEl.style.display = '';
-    document.getElementById('extrasTotalAmt').textContent = '$' + fmt(grand);
-    const parts = [];
-    if (base > 0) parts.push('Alojamiento: $' + fmt(base));
-    if (extAmt > 0) parts.push('Extras: $' + fmt(extAmt));
-    document.getElementById('extrasTotalBreak').textContent = parts.join(' + ');
-  } else {
-    totalEl.style.display = 'none';
+
+  if (extrasData.length === 0 && base <= 0) { box.style.display = 'none'; return; }
+
+  const line = (label, amt, style='') =>
+    `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--t2);margin-bottom:4px;${style}">
+       <span>${label}</span><span style="white-space:nowrap">$${fmt(amt)}</span>
+     </div>`;
+
+  let html = '<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px"><i class="fas fa-receipt"></i> Detalle de la cuenta</div>';
+  if (base > 0) html += line('Alojamiento', base);
+  extrasData.forEach(ex => {
+    const qty = parseInt(ex.qty)||1, price = parseFloat(ex.price)||0;
+    if (!ex.name && !price) return;
+    html += line(`${esc(ex.name||'(sin nombre)')} ×${qty} <span style="color:var(--t3)">($${fmt(price)}/u)</span>`, price*qty);
+  });
+  if (extAmt > 0) html += line('<strong>Subtotal consumos</strong>', extAmt, 'border-top:1px dashed var(--bdr);padding-top:5px;margin-top:5px');
+  html += `<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:var(--acc);border-top:1px solid var(--bdr);padding-top:7px;margin-top:5px">
+    <span>TOTAL GENERAL</span><span>$${fmt(grand)}</span></div>`;
+
+  if (editReservationId) {
+    const balance = grand - LAST_PAID;
+    html += line('Pagado', LAST_PAID, 'margin-top:6px');
+    html += `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:4px;padding:7px 10px;border-radius:8px;background:${balance>0?'#ef444422':'#22c55e22'};color:${balance>0?'#ef4444':'#16a34a'}">
+      <span>${balance>0?'⚠️ Saldo pendiente':'✅ Pagado completo'}</span><span>$${fmt(balance>0?balance:LAST_PAID)}</span></div>`;
   }
+
+  box.innerHTML = html;
+  box.style.display = '';
+}
+
+async function saveExtrasNow() {
+  if (!editReservationId) return;
+  try {
+    await api('reservations.php?action=update&id=' + editReservationId, 'PUT', {
+      extras:      getExtrasPayload(),
+      total_price: parseFloat(document.getElementById('mrPrice').value) || 0,
+    });
+    notify('Consumos guardados ✔', 'ok');
+    await loadData();
+    const rv = RESERVATIONS.find(r => r.id == editReservationId);
+    if (rv) renderReservationPayments(rv);
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function onCustomExtraName(i, value) {
+  extrasData[i].name = value;
+  const match = EXTRAS_CATALOG.find(c => c.name.trim().toLowerCase() === value.trim().toLowerCase());
+  if (match) {
+    const qty = parseInt(extrasData[i].qty) || 1;
+    const existing = extrasData.findIndex((e, j) => j !== i && e.catalogId == match.id);
+    if (existing >= 0) {
+      extrasData[existing].qty += qty;
+      extrasData.splice(i, 1);
+    } else {
+      extrasData[i] = { catalogId: match.id, name: match.name, price: parseFloat(match.price), qty };
+    }
+    renderCatalogGrid();
+    renderExtrasSelected();
+  }
+  updateExtrasTotal();
 }
 
 function getExtrasPayload() {
