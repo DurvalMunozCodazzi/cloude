@@ -180,6 +180,7 @@ if ($method === 'POST' && $action === 'create') {
         $me['id'],
     ]);
     $newId = $db->lastInsertId();
+    rtAudit('reservation', $newId, 'create', ['guest_name' => $guestName, 'check_in' => $checkIn, 'check_out' => $checkOut, 'resource_id' => $resourceId]);
 
     // Guardar extras y acompañantes de esta estadía
     if (!empty($b['extras'])) saveExtras($db, $newId, $b['extras']);
@@ -236,6 +237,7 @@ if ($method === 'PUT' && $action === 'update') {
     if ($sets) {
         $vals[] = $id;
         $db->prepare("UPDATE reservations SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
+        rtAudit('reservation', $id, 'update', array_intersect_key($b, array_flip($allowed)));
     }
     if (array_key_exists('extras', $b)) saveExtras($db, $id, $b['extras']);
     if (array_key_exists('guests', $b)) saveReservationGuests($db, $id, $b['guests']);
@@ -247,6 +249,7 @@ if ($method === 'PUT' && $action === 'update') {
 if ($method === 'DELETE' && $action === 'cancel') {
     if (!$id) rtErr('ID requerido');
     $db->prepare("UPDATE reservations SET status='cancelled' WHERE id=?")->execute([$id]);
+    rtAudit('reservation', $id, 'cancel');
     rtOut(['ok' => true]);
 }
 

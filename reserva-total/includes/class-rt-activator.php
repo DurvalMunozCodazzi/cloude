@@ -262,6 +262,20 @@ class RT_Activator {
             $wpdb->query("ALTER TABLE `rt_checkin_submissions` ADD COLUMN `valuables` VARCHAR(500) DEFAULT '' AFTER `accepted_terms`");
         }
 
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_audit_log` (
+            `id`         INT NOT NULL AUTO_INCREMENT,
+            `entity`     VARCHAR(40)  NOT NULL,
+            `entity_id`  INT          DEFAULT NULL,
+            `action`     VARCHAR(40)  NOT NULL,
+            `user_id`    INT          DEFAULT NULL,
+            `details`    LONGTEXT     DEFAULT NULL,
+            `ip_address` VARCHAR(64)  DEFAULT '',
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `entity_lookup` (`entity`,`entity_id`),
+            KEY `created_at` (`created_at`)
+        ) $charset");
+
         self::migrate_extras_catalog();
         self::migrate_users();
         self::migrate_reservations();

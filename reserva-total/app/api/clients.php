@@ -73,7 +73,9 @@ if ($method === 'POST' && $action === 'create') {
            trim($b['phone']     ?? ''),
            trim($b['notes']     ?? ''),
        ]);
-    rtOut(['ok' => true, 'id' => $db->lastInsertId()], 201);
+    $newId = $db->lastInsertId();
+    rtAudit('client', $newId, 'create', ['first_name' => $firstName, 'last_name' => trim($b['last_name'] ?? '')]);
+    rtOut(['ok' => true, 'id' => $newId], 201);
 }
 
 // ── PUT update ─────────────────────────────────────────────────
@@ -84,14 +86,22 @@ if ($method === 'PUT' && $action === 'update') {
     foreach (['first_name','last_name','dni','address','email','phone','notes'] as $f) {
         if (array_key_exists($f, $b)) { $sets[] = "$f=?"; $vals[] = trim($b[$f]); }
     }
-    if ($sets) { $vals[] = $id; $db->prepare("UPDATE clients SET ".implode(',',$sets)." WHERE id=?")->execute($vals); }
+    if ($sets) {
+        $vals[] = $id;
+        $db->prepare("UPDATE clients SET ".implode(',',$sets)." WHERE id=?")->execute($vals);
+        rtAudit('client', $id, 'update', array_intersect_key($b, array_flip(['first_name','last_name','dni','address','email','phone','notes'])));
+    }
     rtOut(['ok' => true]);
 }
 
 // ── DELETE (borrado lógico) ──────────────────────────────────────
 if ($method === 'DELETE' && $action === 'delete') {
     if (!$id) rtErr('ID requerido');
+    $before = $db->prepare("SELECT first_name,last_name FROM clients WHERE id=?");
+    $before->execute([$id]);
+    $prev = $before->fetch();
     $db->prepare("UPDATE clients SET active=0 WHERE id=?")->execute([$id]);
+    rtAudit('client', $id, 'delete', $prev ?: []);
     rtOut(['ok' => true]);
 }
 

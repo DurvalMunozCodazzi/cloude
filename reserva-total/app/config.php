@@ -103,6 +103,28 @@ function rtRequireAdmin() {
     return $user;
 }
 
+// ── Auditoría — registro forense de altas/bajas/cambios de estado ───────────
+// Deliberadamente a prueba de fallos: si la tabla no existe todavía (instalación
+// vieja sin re-activar el plugin) o algo falla al loguear, NUNCA debe frenar
+// la operación real que se está auditando.
+function rtAudit($entity, $entityId, $action, $details = []) {
+    try {
+        $db  = rtDB();
+        $uid = null;
+        $tok = rtBearerToken();
+        if ($tok) {
+            $st = $db->prepare("SELECT u.id FROM rt_sessions s JOIN rt_users u ON u.id=s.user_id WHERE s.token=? LIMIT 1");
+            $st->execute([$tok]);
+            $row = $st->fetch();
+            $uid = $row ? $row['id'] : null;
+        }
+        $db->prepare("INSERT INTO rt_audit_log (entity,entity_id,action,user_id,details,ip_address) VALUES (?,?,?,?,?,?)")
+           ->execute([$entity, $entityId, $action, $uid, json_encode($details, JSON_UNESCAPED_UNICODE), $_SERVER['REMOTE_ADDR'] ?? '']);
+    } catch (\Throwable $e) {
+        // No interrumpir la operación real por un fallo de auditoría.
+    }
+}
+
 // ── Buscar o crear un cliente a partir de datos de huésped ───────────────────
 // Compartida entre clients.php y reservations.php: cuando se carga una
 // reserva sin elegir cliente explícitamente, vincula (o crea) uno a partir
