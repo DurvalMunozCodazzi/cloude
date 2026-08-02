@@ -146,6 +146,11 @@ if ($method === 'POST' && $action === 'create') {
     $conflict->execute([$resourceId, $checkOut, $checkIn]);
     if ($conflict->fetch()) rtErr('El recurso ya tiene una reserva en ese período');
 
+    $blocked = $db->prepare("SELECT id FROM rt_blocked_dates
+        WHERE resource_id=? AND date_start < ? AND date_end > ?");
+    $blocked->execute([$resourceId, $checkOut, $checkIn]);
+    if ($blocked->fetch()) rtErr('Ese período está bloqueado para este recurso');
+
     // Cliente: el elegido explícitamente, o buscar/crear a partir de los
     // datos del huésped (nombre/email/teléfono/DNI) si no se eligió ninguno.
     $clientId = intval($b['client_id'] ?? 0) ?: null;
@@ -208,6 +213,11 @@ if ($method === 'PUT' && $action === 'update') {
                   AND check_in < ? AND check_out > ?");
             $conflict->execute([$newResId, $id, $newOut, $newIn]);
             if ($conflict->fetch()) rtErr('El recurso ya tiene una reserva en ese período');
+
+            $blocked = $db->prepare("SELECT id FROM rt_blocked_dates
+                WHERE resource_id=? AND date_start < ? AND date_end > ?");
+            $blocked->execute([$newResId, $newOut, $newIn]);
+            if ($blocked->fetch()) rtErr('Ese período está bloqueado para este recurso');
         }
     }
 
@@ -218,6 +228,10 @@ if ($method === 'PUT' && $action === 'update') {
     foreach ($allowed as $f) {
         if (array_key_exists($f, $b)) { $sets[] = "$f=?"; $vals[] = $b[$f]; }
     }
+    // Si cambian las fechas, volver a habilitar los recordatorios automáticos
+    // para que se re-evalúen contra la nueva fecha en el próximo cron.
+    if (array_key_exists('check_in', $b))  { $sets[] = 'checkin_reminder_sent=0'; }
+    if (array_key_exists('check_out', $b)) { $sets[] = 'overdue_reminder_sent=0'; }
     if ($sets) {
         $vals[] = $id;
         $db->prepare("UPDATE reservations SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);

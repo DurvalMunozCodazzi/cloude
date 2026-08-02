@@ -8,7 +8,7 @@ $action = $_GET['action'] ?? '';
 
 // ── GET settings ──────────────────────────────────────────────
 if ($method === 'GET' && $action === 'get') {
-    $keys = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled'];
+    $keys = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email'];
     $placeholders = implode(',', array_fill(0, count($keys), '?'));
     $st = $db->prepare("SELECT meta_key, meta_value FROM rt_settings WHERE meta_key IN ($placeholders)");
     $st->execute($keys);
@@ -24,7 +24,7 @@ if ($method === 'GET' && $action === 'get') {
 // ── POST save ────────────────────────────────────────────────
 if ($method === 'POST' && $action === 'save') {
     $b = json_decode(file_get_contents('php://input'), true);
-    $allowed = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled'];
+    $allowed = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email'];
     foreach ($allowed as $key) {
         if (!array_key_exists($key, $b)) continue;
         if ($key === 'smtp_pass' && $b[$key] === '') continue; // no sobreescribir si vacío

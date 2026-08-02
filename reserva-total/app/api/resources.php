@@ -72,6 +72,18 @@ if ($method === 'DELETE' && $action === 'delete') {
     rtOut(['ok' => true]);
 }
 
+// ── POST generar/obtener el token de link público (calendario + iCal) ───
+if ($method === 'POST' && $action === 'generate_public_link') {
+    rtRequireAdmin();
+    if (!$id) rtErr('ID requerido');
+    $st = $db->prepare("SELECT public_token FROM resources WHERE id=?"); $st->execute([$id]);
+    $row = $st->fetch();
+    if (!$row) rtErr('Recurso no encontrado', 404);
+    $token = $row['public_token'] ?: bin2hex(random_bytes(20));
+    $db->prepare("UPDATE resources SET public_token=? WHERE id=?")->execute([$token, $id]);
+    rtOut(['token' => $token]);
+}
+
 // ── POST reorder ─────────────────────────────────────────────
 if ($method === 'POST' && $action === 'reorder') {
     rtRequireAdmin();

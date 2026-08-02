@@ -49,6 +49,13 @@ function getReservationFull(PDO $db, $id) {
     $extTotal = array_sum(array_map(function($e){ return $e['price']*$e['qty']; }, $row['extras']));
     $row['extras_total'] = $extTotal;
     $row['grand_total']  = floatval($row['total_price']) + $extTotal;
+
+    $st3 = $db->prepare("SELECT amount,method,payment_date,notes FROM reservation_payments WHERE reservation_id=? ORDER BY payment_date,id");
+    $st3->execute([$id]);
+    $row['payments']   = $st3->fetchAll();
+    $paidTotal         = array_sum(array_map(fn($p) => floatval($p['amount']), $row['payments']));
+    $row['paid_total'] = $paidTotal;
+    $row['balance']    = round($row['grand_total'] - $paidTotal, 2);
     return $row;
 }
 
@@ -111,6 +118,33 @@ function buildReceipt(array $rv, bool $forEmail) {
     // Adults/children
     $pax = $rv['adults'] . ' adulto(s)';
     if ($rv['children'] > 0) $pax .= ' · ' . $rv['children'] . ' niño(s)';
+
+    // Pagos registrados
+    $paymentsBlock = '';
+    $paidTotal = $rv['paid_total'] ?? 0;
+    $balance   = $rv['balance']    ?? $grand;
+    if ($paidTotal > 0 || $balance != $grand) {
+        $payRows = '';
+        foreach (($rv['payments'] ?? []) as $p) {
+            $pd = $p['payment_date'] ? (new DateTime($p['payment_date']))->format('d/m/Y') : '—';
+            $payRows .= "<tr><td class='exp-name'>{$pd} · " . ($payLabels[$p['method']] ?? $p['method']) . "</td>
+                             <td class='exp-amt'>$" . fmtMoney($p['amount']) . "</td></tr>";
+        }
+        $balColor  = $balance > 0 ? '#ef4444' : '#16a34a';
+        $balLabel  = $balance > 0 ? 'Saldo pendiente' : 'Pagado completo';
+        $balAmtFmt = '$' . fmtMoney($balance > 0 ? $balance : $paidTotal);
+        $paymentsBlock = <<<HTML
+    <div class="section">
+      <div class="sec-title">Pagos registrados</div>
+      <table class="exp">
+        <tbody>{$payRows}</tbody>
+      </table>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:8px;padding:8px 10px;border-radius:8px;background:{$balColor}22;color:{$balColor}">
+        <span>{$balLabel}</span><span>{$balAmtFmt}</span>
+      </div>
+    </div>
+HTML;
+    }
 
     $bg = $forEmail ? '#f4f4f4' : 'white';
 
@@ -232,6 +266,7 @@ HTML;
       <div class="pay-row">Forma de pago: {$pay}</div>
     </div>
 
+{$paymentsBlock}
 {$notesBlock}
   </div>
   <div class="footer">

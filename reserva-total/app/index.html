@@ -70,6 +70,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 .tb-views{display:flex;gap:4px}
 .tb-view-btn{background:none;border:1px solid var(--bdr);color:var(--t3);cursor:pointer;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;transition:.15s}
 .tb-view-btn.active,.tb-view-btn:hover{background:var(--accg);border-color:var(--acc);color:var(--acc)}
+.av-tab-btn.active{background:var(--accg);border-color:var(--acc);color:var(--acc)}
 .tb-spacer{flex:1}
 .tb-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.15s}.tb-user:hover{background:var(--hov)}
 .tb-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
@@ -105,6 +106,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 .gantt-bars{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
 .gantt-bar{position:absolute;height:34px;top:9px;border-radius:6px;cursor:pointer;pointer-events:all;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .gantt-bar:hover{filter:brightness(1.15);transform:scaleY(1.05);z-index:5}
+.gantt-bar-blocked{background:repeating-linear-gradient(45deg,#767b90,#767b90 8px,#5c6072 8px,#5c6072 16px)!important;color:#fff!important}
 
 /* ── LIST VIEW ── */
 #listView{padding:20px;display:none}
@@ -287,7 +289,9 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <button class="btn-icon" onclick="toggleResourcesPanel()" title="Gestionar recursos"><i class="fas fa-bed"></i></button>
     <button class="btn-icon" id="extrasBtn" onclick="openExtrasCatalogModal()" title="Catálogo de Extras" style="display:none"><i class="fas fa-concierge-bell"></i></button>
     <button class="btn-icon" id="clientsBtn" onclick="openClientsModal()" title="Clientes" style="display:none"><i class="fas fa-address-book"></i></button>
+    <button class="btn-icon" id="reportsBtn" onclick="openReportsModal()" title="Reportes" style="display:none"><i class="fas fa-chart-line"></i></button>
     <button class="btn-icon" id="usersBtn" onclick="openUsersModal()" title="Usuarios" style="display:none"><i class="fas fa-users"></i></button>
+    <button class="btn-icon" id="availabilityBtn" onclick="openAvailabilityModal()" title="Disponibilidad y Sync" style="display:none"><i class="fas fa-calendar-alt"></i></button>
     <button class="btn-icon" id="smtpBtn" onclick="openSmtpModal()" title="Configuración SMTP" style="display:none"><i class="fas fa-cog"></i></button>
     <div class="tb-spacer"></div>
     <div class="tb-user" onclick="openUsersModal()">
@@ -475,6 +479,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
         </select>
       </div>
       <button type="button" class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="addPayment(editReservationId)"><i class="fas fa-plus"></i> Registrar pago</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="sendReservationSummary(editReservationId, document.getElementById('mrEmail').value.trim())"><i class="fas fa-paper-plane"></i> Enviar comprobante al huésped</button>
     </div>
     <div class="fg"><label>Notas para el huésped</label><textarea id="mrNotes" rows="2" placeholder="Información para el huésped..."></textarea></div>
     <div class="fg"><label>Notas internas</label><textarea id="mrInternal" rows="2" placeholder="Solo visible para el equipo..."></textarea></div>
@@ -681,6 +686,10 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
         <input id="smtpEnabled" type="checkbox" style="width:auto;accent-color:var(--acc)">
         <label style="margin:0;text-transform:none;font-size:13px;font-weight:600;color:var(--t1)">Habilitar envío de emails</label>
       </div>
+      <div class="fg" style="margin-top:12px">
+        <label>Email para avisos internos <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(saldos pendientes de reservas ya finalizadas)</span></label>
+        <input id="notifyEmail" type="email" placeholder="tu@email.com">
+      </div>
       <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
         <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Probar configuración</div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -692,6 +701,90 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeMo('moSmtp')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveSmtp()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPORTES -->
+<div class="modal-overlay" id="moReports">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-chart-line" style="color:var(--acc)"></i> Reportes de ocupación e ingresos</div>
+      <button class="btn-icon" onclick="closeMo('moReports')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm" onclick="repNav(-1)">‹ Mes anterior</button>
+      <strong id="repMonthLabel" style="font-size:14px"></strong>
+      <button class="btn btn-secondary btn-sm" onclick="repNav(1)">Mes siguiente ›</button>
+    </div>
+    <div id="repContent"></div>
+  </div>
+</div>
+
+<!-- MODAL: DISPONIBILIDAD Y SYNC -->
+<div class="modal-overlay" id="moAvailability">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-calendar-alt" style="color:var(--acc)"></i> Disponibilidad y Sync</div>
+      <button class="btn-icon" onclick="closeMo('moAvailability')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--bdr);padding-bottom:12px">
+      <button class="btn btn-secondary btn-sm av-tab-btn active" id="avTabBtnBlocks" onclick="switchAvTab('blocks')">Bloqueos</button>
+      <button class="btn btn-secondary btn-sm av-tab-btn" id="avTabBtnRates" onclick="switchAvTab('rates')">Tarifas por temporada</button>
+      <button class="btn btn-secondary btn-sm av-tab-btn" id="avTabBtnSync" onclick="switchAvTab('sync')">Enlaces públicos e iCal</button>
+    </div>
+
+    <!-- TAB: BLOQUEOS -->
+    <div id="avTabBlocks">
+      <div class="row3">
+        <div class="fg"><label>Recurso</label><select id="blkResource"></select></div>
+        <div class="fg"><label>Desde</label><input id="blkStart" type="date"></div>
+        <div class="fg"><label>Hasta</label><input id="blkEnd" type="date"></div>
+      </div>
+      <div class="fg"><label>Motivo <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(opcional)</span></label><input id="blkReason" type="text" placeholder="Mantenimiento, uso propio..."></div>
+      <button class="btn btn-primary btn-sm" onclick="createBlock()"><i class="fas fa-ban"></i> Bloquear fechas</button>
+      <div id="blkList" style="margin-top:16px"></div>
+    </div>
+
+    <!-- TAB: TARIFAS POR TEMPORADA -->
+    <div id="avTabRates" style="display:none">
+      <div class="fg"><label>Nombre de la temporada</label><input id="rateName" type="text" placeholder="Temporada alta — enero"></div>
+      <div class="row2">
+        <div class="fg"><label>Recurso <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(vacío = todos)</span></label><select id="rateResource"><option value="">Todos los recursos</option></select></div>
+        <div class="fg"><label>Precio por noche</label><input id="ratePricePerDay" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Desde</label><input id="rateStart" type="date"></div>
+        <div class="fg"><label>Hasta</label><input id="rateEnd" type="date"></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="createRate()"><i class="fas fa-plus"></i> Agregar tarifa</button>
+      <div id="rateList" style="margin-top:16px"></div>
+    </div>
+
+    <!-- TAB: ENLACES PÚBLICOS E ICAL -->
+    <div id="avTabSync" style="display:none">
+      <div class="fg">
+        <label>Calendario público / feed iCal de un recurso</label>
+        <div style="display:flex;gap:6px">
+          <select id="syncResource" style="flex:1"></select>
+          <button class="btn btn-secondary btn-sm" onclick="generatePublicLink()"><i class="fas fa-link"></i> Generar enlace</button>
+        </div>
+        <div id="syncLinksBox" style="display:none;margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Calendario público (compartir con huéspedes)</div>
+          <div style="display:flex;gap:6px;margin-bottom:10px"><input id="syncPublicUrl" type="text" readonly style="font-size:11px"><button class="btn btn-secondary btn-sm" onclick="copyToClipboard('syncPublicUrl')"><i class="fas fa-copy"></i></button></div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Feed iCal (pegar en Booking/Airbnb como calendario importado)</div>
+          <div style="display:flex;gap:6px"><input id="syncIcalUrl" type="text" readonly style="font-size:11px"><button class="btn btn-secondary btn-sm" onclick="copyToClipboard('syncIcalUrl')"><i class="fas fa-copy"></i></button></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--bdr)">
+        <label>Importar calendario externo (Booking/Airbnb → bloquea fechas acá)</label>
+        <div class="row2">
+          <select id="icalResource"></select>
+          <input id="icalUrl" type="text" placeholder="https://.../calendar.ics">
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="createIcalImport()"><i class="fas fa-download"></i> Agregar e importar</button>
+      </div>
+      <div id="icalList" style="margin-top:16px"></div>
     </div>
   </div>
 </div>
@@ -720,6 +813,8 @@ let TOKEN = localStorage.getItem('rt_token');
 let CURRENT_USER = null;
 let RESOURCES = [];
 let RESERVATIONS = [];
+let BLOCKS = [];
+let SEASONAL_RATES = [];
 let YEAR = new Date().getFullYear();
 let MONTH = new Date().getMonth() + 1; // 1-12
 let VIEW = 'gantt';
@@ -735,10 +830,11 @@ const TYPE_ICONS = {room:'fa-bed',cabin:'fa-house',apartment:'fa-building',house
 const COLORS = ['#0d9488','#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e','#ef4444','#6366f1','#f97316','#06b6d4'];
 
 // ── API ───────────────────────────────────────────────────────────────────
-const BASE = (() => {
+const APP_BASE = (() => {
   const p = window.location.pathname.replace(/\/index\.html$/, '');
-  return window.location.origin + p + '/api/';
+  return window.location.origin + p + '/';
 })();
+const BASE = APP_BASE + 'api/';
 
 async function api(endpoint, method = 'GET', body = null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -858,10 +954,12 @@ async function afterLogin() {
   av.style.background = CURRENT_USER.color || '#0d9488';
   un.textContent = CURRENT_USER.name || CURRENT_USER.username;
   document.getElementById('clientsBtn').style.display = '';
+  document.getElementById('reportsBtn').style.display = '';
   if (CURRENT_USER.role === 'admin') {
     document.getElementById('usersBtn').style.display = '';
     document.getElementById('extrasBtn').style.display = '';
     document.getElementById('smtpBtn').style.display = '';
+    document.getElementById('availabilityBtn').style.display = '';
   }
   await loadData();
 }
@@ -869,13 +967,16 @@ async function afterLogin() {
 // ── DATA ──────────────────────────────────────────────────────────────────
 async function loadData() {
   try {
-    const [rRes, resData] = await Promise.all([
+    const [rRes, resData, blkData] = await Promise.all([
       api('resources.php?action=list'),
       api(`reservations.php?action=list&year=${YEAR}&month=${MONTH}`),
+      api(`blocks.php?action=list&year=${YEAR}&month=${MONTH}`),
       loadExtrasCatalog(),
+      loadSeasonalRates(),
     ]);
     RESOURCES = rRes.resources || [];
     RESERVATIONS = resData.reservations || [];
+    BLOCKS = blkData.blocks || [];
     updateMonthLabel();
     renderGantt();
     renderList();
@@ -884,6 +985,13 @@ async function loadData() {
   } catch(e) {
     notify('Error cargando datos: ' + e.message, 'er');
   }
+}
+
+async function loadSeasonalRates() {
+  try {
+    const d = await api('seasonal_rates.php?action=list');
+    SEASONAL_RATES = d.rates || [];
+  } catch(e) { SEASONAL_RATES = []; }
 }
 
 // ── MONTH NAV ─────────────────────────────────────────────────────────────
@@ -993,6 +1101,27 @@ function renderGantt() {
       bar.textContent = rv.guest_name;
       bar.title = `${rv.guest_name} · ${fmtDate(rv.check_in)} → ${fmtDate(rv.check_out)}`;
       bar.onclick = (e) => { e.stopPropagation(); openReservationDetail(rv.id); };
+      barsEl.appendChild(bar);
+    });
+
+    const myBlocks = BLOCKS.filter(bl => bl.resource_id == r.id);
+    myBlocks.forEach(bl => {
+      const bs = new Date(bl.date_start.replace(' ','T'));
+      const be = new Date(bl.date_end.replace(' ','T'));
+      const monthStart = new Date(YEAR, MONTH-1, 1);
+      const monthEnd   = new Date(YEAR, MONTH, 0, 23, 59, 59);
+      const startCl = bs < monthStart ? monthStart : bs;
+      const endCl   = be > monthEnd   ? monthEnd   : be;
+      const startDay = startCl.getDate();
+      const endDay   = endCl.getDate();
+      const durDays  = Math.max(1, endDay - startDay + 1);
+
+      const bar = document.createElement('div');
+      bar.className = 'gantt-bar gantt-bar-blocked';
+      bar.style.cssText = `left:${(startDay-1)*DAY_W+2}px;width:${durDays*DAY_W-4}px`;
+      bar.innerHTML = `<i class="fas fa-ban" style="margin-right:4px"></i> ${esc(bl.reason || 'Bloqueado')}`;
+      bar.title = `Bloqueado · ${fmtDate(bl.date_start)} → ${fmtDate(bl.date_end)}${bl.reason ? ' · '+bl.reason : ''}`;
+      bar.onclick = (e) => { e.stopPropagation(); confirmDeleteBlock(bl.id); };
       barsEl.appendChild(bar);
     });
 
@@ -1741,12 +1870,286 @@ function renderClientHistory(reservations) {
   }).join('');
 }
 
+// ── REPORTES ──────────────────────────────────────────────────────────────
+let REP_YEAR = new Date().getFullYear();
+let REP_MONTH = new Date().getMonth() + 1;
+const MONTHS_ES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+async function openReportsModal() {
+  REP_YEAR = YEAR; REP_MONTH = MONTH;
+  await loadReports();
+  openMo('moReports');
+}
+
+function repNav(delta) {
+  REP_MONTH += delta;
+  if (REP_MONTH < 1)  { REP_MONTH = 12; REP_YEAR--; }
+  if (REP_MONTH > 12) { REP_MONTH = 1;  REP_YEAR++; }
+  loadReports();
+}
+
+async function loadReports() {
+  document.getElementById('repMonthLabel').textContent = `${MONTHS_ES_FULL[REP_MONTH-1]} ${REP_YEAR}`;
+  const content = document.getElementById('repContent');
+  content.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3)">Cargando...</div>';
+  try {
+    const d = await api(`reports.php?action=summary&year=${REP_YEAR}&month=${REP_MONTH}`);
+    renderReportContent(d);
+  } catch(e) {
+    content.innerHTML = `<div style="text-align:center;padding:30px;color:var(--cancelled)">${esc(e.message)}</div>`;
+  }
+}
+
+function renderReportContent(d) {
+  const cards = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+      <div style="background:var(--bg);border-radius:var(--r);padding:14px;text-align:center">
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Ingresos totales</div>
+        <div style="font-size:20px;font-weight:800;color:var(--acc);margin-top:4px">$${fmt(d.grand_total)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--r);padding:14px;text-align:center">
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Cobrado</div>
+        <div style="font-size:20px;font-weight:800;color:#16a34a;margin-top:4px">$${fmt(d.paid_total)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--r);padding:14px;text-align:center">
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Pendiente de cobro</div>
+        <div style="font-size:20px;font-weight:800;color:${d.balance>0?'#ef4444':'#16a34a'};margin-top:4px">$${fmt(d.balance)}</div>
+      </div>
+    </div>`;
+
+  const occRows = d.occupancy.map(r => {
+    const pct = r.occupancy_pct;
+    const barColor = pct >= 70 ? '#16a34a' : pct >= 40 ? '#f59e0b' : '#ef4444';
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="font-weight:600">${esc(r.name)}</span>
+        <span style="color:var(--t2)">${r.nights} noche(s) · ${pct}%</span>
+      </div>
+      <div style="background:var(--bdr);border-radius:6px;height:8px;overflow:hidden">
+        <div style="width:${pct}%;background:${barColor};height:100%"></div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--t3)">Sin recursos activos</div>';
+
+  const extrasRows = d.top_extras.length ? d.top_extras.map(e => `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:6px">
+      <span>${esc(e.name)}${e.qty>1?' ×'+e.qty:''}</span><span style="font-weight:700;color:var(--t1)">$${fmt(e.revenue)}</span>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin ventas de extras este mes</div>';
+
+  document.getElementById('repContent').innerHTML = `
+    ${cards}
+    <div style="border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:16px">
+      <div class="sp-label" style="margin-bottom:10px">Ocupación por recurso (${d.reservations_count} reserva(s) este mes)</div>
+      ${occRows}
+    </div>
+    <div style="border:1px solid var(--bdr);border-radius:var(--r);padding:14px">
+      <div class="sp-label" style="margin-bottom:10px">Extras más vendidos</div>
+      ${extrasRows}
+    </div>`;
+}
+
+// ── DISPONIBILIDAD Y SYNC ─────────────────────────────────────────────────
+function switchAvTab(tab) {
+  const tabs = { blocks: 'avTabBlocks', rates: 'avTabRates', sync: 'avTabSync' };
+  const btns = { blocks: 'avTabBtnBlocks', rates: 'avTabBtnRates', sync: 'avTabBtnSync' };
+  Object.keys(tabs).forEach(t => {
+    document.getElementById(tabs[t]).style.display = t === tab ? '' : 'none';
+    document.getElementById(btns[t]).classList.toggle('active', t === tab);
+  });
+}
+
+async function openAvailabilityModal() {
+  const opts = RESOURCES.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('');
+  document.getElementById('blkResource').innerHTML  = opts;
+  document.getElementById('rateResource').innerHTML = '<option value="">Todos los recursos</option>' + opts;
+  document.getElementById('syncResource').innerHTML = opts;
+  document.getElementById('icalResource').innerHTML = opts;
+  document.getElementById('syncLinksBox').style.display = 'none';
+  switchAvTab('blocks');
+  await Promise.all([loadBlocksAdminList(), loadRatesList(), loadIcalImportsList()]);
+  openMo('moAvailability');
+}
+
+function copyToClipboard(inputId) {
+  const el = document.getElementById(inputId);
+  el.select(); el.setSelectionRange(0, 99999);
+  navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(el.value) : document.execCommand('copy');
+  notify('Copiado al portapapeles', 'ok');
+}
+
+// ── Bloqueos ────────────────────────────────────────────────────────────
+async function loadBlocksAdminList() {
+  const box = document.getElementById('blkList');
+  box.innerHTML = '<div style="font-size:12px;color:var(--t3)">Cargando...</div>';
+  try {
+    const d = await api('blocks.php?action=list&all=1');
+    const rows = d.blocks || [];
+    box.innerHTML = rows.length ? rows.map(b => `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+        <div>
+          <strong style="color:var(--t1)">${esc(b.resource_name)}</strong> · ${fmtDate(b.date_start)} → ${fmtDate(b.date_end)}
+          ${b.reason ? '<div style="color:var(--t3)">'+esc(b.reason)+'</div>' : ''}
+        </div>
+        <button class="btn-icon btn-sm" onclick="deleteBlock(${b.id})" title="Eliminar bloqueo"><i class="fas fa-trash" style="color:#ef4444"></i></button>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin fechas bloqueadas</div>';
+  } catch(e) { box.innerHTML = `<div style="font-size:12px;color:var(--cancelled)">${esc(e.message)}</div>`; }
+}
+
+async function createBlock() {
+  const body = {
+    resource_id: parseInt(document.getElementById('blkResource').value),
+    date_start:  document.getElementById('blkStart').value,
+    date_end:    document.getElementById('blkEnd').value,
+    reason:      document.getElementById('blkReason').value.trim(),
+  };
+  if (!body.date_start || !body.date_end) { notify('Ingresá las fechas de inicio y fin', 'er'); return; }
+  try {
+    await api('blocks.php?action=create', 'POST', body);
+    notify('Fechas bloqueadas', 'ok');
+    document.getElementById('blkStart').value = '';
+    document.getElementById('blkEnd').value = '';
+    document.getElementById('blkReason').value = '';
+    await loadBlocksAdminList();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteBlock(id) {
+  if (!confirm('¿Eliminar este bloqueo?')) return;
+  try {
+    await api('blocks.php?action=delete&id=' + id, 'DELETE');
+    notify('Bloqueo eliminado', 'wa');
+    await loadBlocksAdminList();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+function confirmDeleteBlock(id) {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') { notify('Solo un administrador puede desbloquear fechas', 'er'); return; }
+  deleteBlock(id);
+}
+
+// ── Tarifas por temporada ─────────────────────────────────────────────────
+async function loadRatesList() {
+  const box = document.getElementById('rateList');
+  box.innerHTML = '<div style="font-size:12px;color:var(--t3)">Cargando...</div>';
+  try {
+    const d = await api('seasonal_rates.php?action=list');
+    SEASONAL_RATES = d.rates || [];
+    box.innerHTML = SEASONAL_RATES.length ? SEASONAL_RATES.map(r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+        <div>
+          <strong style="color:var(--t1)">${esc(r.name)}</strong> · ${r.resource_name ? esc(r.resource_name) : 'Todos los recursos'}
+          <div style="color:var(--t3)">${fmtDate(r.date_start)} → ${fmtDate(r.date_end)} · $${fmt(r.price_per_day)}/noche</div>
+        </div>
+        <button class="btn-icon btn-sm" onclick="deleteRate(${r.id})" title="Eliminar tarifa"><i class="fas fa-trash" style="color:#ef4444"></i></button>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin tarifas de temporada cargadas</div>';
+  } catch(e) { box.innerHTML = `<div style="font-size:12px;color:var(--cancelled)">${esc(e.message)}</div>`; }
+}
+
+async function createRate() {
+  const body = {
+    name:           document.getElementById('rateName').value.trim(),
+    resource_id:    parseInt(document.getElementById('rateResource').value) || null,
+    date_start:     document.getElementById('rateStart').value,
+    date_end:       document.getElementById('rateEnd').value,
+    price_per_day:  parseFloat(document.getElementById('ratePricePerDay').value) || 0,
+  };
+  if (!body.name) { notify('Ingresá un nombre para la temporada', 'er'); return; }
+  if (!body.date_start || !body.date_end) { notify('Ingresá las fechas de inicio y fin', 'er'); return; }
+  try {
+    await api('seasonal_rates.php?action=create', 'POST', body);
+    notify('Tarifa de temporada agregada', 'ok');
+    document.getElementById('rateName').value = '';
+    document.getElementById('rateStart').value = '';
+    document.getElementById('rateEnd').value = '';
+    document.getElementById('ratePricePerDay').value = '';
+    await loadRatesList();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteRate(id) {
+  if (!confirm('¿Eliminar esta tarifa de temporada?')) return;
+  try {
+    await api('seasonal_rates.php?action=delete&id=' + id, 'DELETE');
+    notify('Tarifa eliminada', 'wa');
+    await loadRatesList();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+// ── Enlaces públicos e iCal ────────────────────────────────────────────────
+async function generatePublicLink() {
+  const resId = parseInt(document.getElementById('syncResource').value);
+  if (!resId) return;
+  try {
+    const d = await api('resources.php?action=generate_public_link&id=' + resId, 'POST');
+    document.getElementById('syncPublicUrl').value = APP_BASE + 'public.php?token=' + encodeURIComponent(d.token);
+    document.getElementById('syncIcalUrl').value   = APP_BASE + 'ical.php?token='   + encodeURIComponent(d.token);
+    document.getElementById('syncLinksBox').style.display = '';
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function loadIcalImportsList() {
+  const box = document.getElementById('icalList');
+  box.innerHTML = '<div style="font-size:12px;color:var(--t3)">Cargando...</div>';
+  try {
+    const d = await api('ical_imports.php?action=list');
+    const rows = d.imports || [];
+    box.innerHTML = rows.length ? rows.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+        <div style="max-width:70%">
+          <strong style="color:var(--t1)">${esc(i.resource_name)}</strong>
+          <div style="color:var(--t3);word-break:break-all">${esc(i.url)}</div>
+          <div style="color:${i.last_status && i.last_status.startsWith('Error') ? '#ef4444' : 'var(--t3)'}">${i.last_status ? esc(i.last_status) : 'Todavía sin sincronizar'}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-icon btn-sm" onclick="syncIcalImportNow(${i.id})" title="Sincronizar ahora"><i class="fas fa-sync"></i></button>
+          <button class="btn-icon btn-sm" onclick="deleteIcalImport(${i.id})" title="Eliminar"><i class="fas fa-trash" style="color:#ef4444"></i></button>
+        </div>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin calendarios externos importados</div>';
+  } catch(e) { box.innerHTML = `<div style="font-size:12px;color:var(--cancelled)">${esc(e.message)}</div>`; }
+}
+
+async function createIcalImport() {
+  const body = {
+    resource_id: parseInt(document.getElementById('icalResource').value),
+    url:         document.getElementById('icalUrl').value.trim(),
+  };
+  if (!body.url) { notify('Ingresá la URL del calendario (.ics)', 'er'); return; }
+  try {
+    await api('ical_imports.php?action=create', 'POST', body);
+    notify('Calendario importado', 'ok');
+    document.getElementById('icalUrl').value = '';
+    await loadIcalImportsList();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function syncIcalImportNow(id) {
+  try {
+    await api('ical_imports.php?action=sync&id=' + id, 'POST');
+    notify('Calendario sincronizado', 'ok');
+    await loadIcalImportsList();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteIcalImport(id) {
+  if (!confirm('¿Eliminar este calendario importado? Se liberarán las fechas que había bloqueado.')) return;
+  try {
+    await api('ical_imports.php?action=delete&id=' + id, 'DELETE');
+    notify('Calendario eliminado', 'wa');
+    await loadIcalImportsList();
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
 // ── MODAL HELPERS ─────────────────────────────────────────────────────────
 function openMo(id) { document.getElementById(id).classList.add('on'); }
 function closeMo(id) { document.getElementById(id).classList.remove('on'); }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['moReserva','moResource','moUsers','moExtrasCatalog','moClients'].forEach(m => {
+    ['moReserva','moResource','moUsers','moExtrasCatalog','moClients','moSmtp','moReports','moAvailability'].forEach(m => {
       if (document.getElementById(m).classList.contains('on')) closeMo(m);
     });
     closeSidePanel();
@@ -2164,8 +2567,24 @@ function recalcPrice(forceUpdate = false) {
     desc  = `calculado: ${Math.ceil(diffHrs)} hora(s) × $${fmt(res.price_per_hour)}`;
   } else if (parseFloat(res.price_per_day) > 0) {
     const nights = Math.ceil(diffDays);
-    price = nights * parseFloat(res.price_per_day);
-    desc  = `calculado: ${nights} noche(s) × $${fmt(res.price_per_day)}`;
+    const toDateStr = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const findNightRate = dateStr => {
+      const matches = SEASONAL_RATES.filter(sr => (!sr.resource_id || sr.resource_id == resId) && dateStr >= sr.date_start && dateStr <= sr.date_end);
+      if (!matches.length) return null;
+      matches.sort((a,b) => (a.resource_id?0:1) - (b.resource_id?0:1)); // recurso específico gana sobre "todos"
+      return matches[0];
+    };
+    let usedSeasonal = false;
+    price = 0;
+    for (let i = 0; i < nights; i++) {
+      const nightDate = new Date(ci); nightDate.setDate(nightDate.getDate() + i);
+      const rate = findNightRate(toDateStr(nightDate));
+      if (rate) { price += parseFloat(rate.price_per_day); usedSeasonal = true; }
+      else price += parseFloat(res.price_per_day);
+    }
+    desc = usedSeasonal
+      ? `calculado: ${nights} noche(s) — incluye tarifa de temporada`
+      : `calculado: ${nights} noche(s) × $${fmt(res.price_per_day)}`;
   } else {
     hint.style.display = 'none'; return;
   }
@@ -2210,6 +2629,7 @@ async function openSmtpModal() {
     document.getElementById('smtpPass').placeholder = s.smtp_pass_set ? '••••••••••••••••  (guardada)' : '••••••••••••••••';
     document.getElementById('smtpFromName').value = s.smtp_from_name || 'Reserva Total';
     document.getElementById('smtpEnabled').checked = s.smtp_enabled === '1';
+    document.getElementById('notifyEmail').value  = s.notify_email || '';
     document.getElementById('smtpTestTo').value   = '';
   } catch(e) {
     notify('Error cargando configuración: ' + e.message, 'er'); return;
@@ -2225,6 +2645,7 @@ async function saveSmtp() {
     smtp_pass:      document.getElementById('smtpPass').value,
     smtp_from_name: document.getElementById('smtpFromName').value.trim(),
     smtp_enabled:   document.getElementById('smtpEnabled').checked ? '1' : '0',
+    notify_email:   document.getElementById('notifyEmail').value.trim(),
   };
   try {
     await api('settings.php?action=save', 'POST', body);

@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      2.14.0
+ * Version:      3.0.0
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '2.14.0');
+define('RT_VERSION',    '3.0.0');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
@@ -24,6 +24,14 @@ require_once RT_PLUGIN_DIR . 'includes/class-rt-license.php';
 
 register_activation_hook(__FILE__,   ['RT_Activator', 'activate']);
 register_deactivation_hook(__FILE__, ['RT_Activator', 'deactivate']);
+
+// ── Cron horario: recordatorios por email + sync de calendarios iCal ────────
+add_action('rt_cron_reminders', 'rt_run_reminders_cron');
+function rt_run_reminders_cron() {
+    $secret = get_option('rt_cron_secret', '');
+    if (!$secret) return;
+    wp_remote_get(RT_APP_URL . 'api/cron.php?secret=' . urlencode($secret), ['timeout' => 25, 'blocking' => false]);
+}
 
 // Autoreparación: WordPress solo dispara register_activation_hook al pasar de
 // desactivado a activado — actualizar el plugin reemplazando sus archivos
@@ -45,6 +53,12 @@ function rt_maybe_upgrade() {
     // haya cambiado.
     if (!file_exists(RT_APP_DIR . 'rt-config.php')) {
         RT_Activator::regenerate_app_config();
+    }
+    // Misma red de seguridad: si el cron horario no quedó programado (p.ej.
+    // porque el hook de activación no corrió al reemplazar archivos), lo
+    // reprogramamos acá en cada carga de WordPress.
+    if (!wp_next_scheduled('rt_cron_reminders')) {
+        wp_schedule_event(time(), 'hourly', 'rt_cron_reminders');
     }
 }
 

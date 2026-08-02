@@ -10,10 +10,14 @@ class RT_Activator {
         if (!get_option('rt_entry_token')) {
             update_option('rt_entry_token', bin2hex(random_bytes(24)));
         }
+        if (!wp_next_scheduled('rt_cron_reminders')) {
+            wp_schedule_event(time(), 'hourly', 'rt_cron_reminders');
+        }
         flush_rewrite_rules();
     }
 
     public static function deactivate() {
+        wp_clear_scheduled_hook('rt_cron_reminders');
         flush_rewrite_rules();
     }
 
@@ -181,9 +185,50 @@ class RT_Activator {
             KEY `reservation_id` (`reservation_id`)
         ) $charset");
 
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_seasonal_rates` (
+            `id`             INT NOT NULL AUTO_INCREMENT,
+            `resource_id`    INT          DEFAULT NULL,
+            `name`           VARCHAR(200) NOT NULL,
+            `date_start`     DATE NOT NULL,
+            `date_end`       DATE NOT NULL,
+            `price_per_day`  DECIMAL(10,2) DEFAULT 0,
+            `price_per_hour` DECIMAL(10,2) DEFAULT NULL,
+            `created_at`     DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `resource_id` (`resource_id`),
+            KEY `date_start`  (`date_start`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_blocked_dates` (
+            `id`          INT NOT NULL AUTO_INCREMENT,
+            `resource_id` INT NOT NULL,
+            `date_start`  DATETIME NOT NULL,
+            `date_end`    DATETIME NOT NULL,
+            `reason`      VARCHAR(300) DEFAULT '',
+            `source`      VARCHAR(100) DEFAULT 'manual',
+            `created_by`  INT          DEFAULT NULL,
+            `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `resource_id` (`resource_id`),
+            KEY `source`      (`source`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_ical_imports` (
+            `id`             INT NOT NULL AUTO_INCREMENT,
+            `resource_id`    INT NOT NULL,
+            `name`           VARCHAR(200) DEFAULT '',
+            `url`            TEXT NOT NULL,
+            `last_synced_at` DATETIME DEFAULT NULL,
+            `last_status`    VARCHAR(300) DEFAULT NULL,
+            `created_at`     DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `resource_id` (`resource_id`)
+        ) $charset");
+
         self::migrate_extras_catalog();
         self::migrate_users();
         self::migrate_reservations();
+        self::migrate_resources();
     }
 
     // client_id, para instalaciones de reservations creadas antes del ABM
@@ -193,6 +238,22 @@ class RT_Activator {
         $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `reservations`", ARRAY_A), 'Field');
         if (!in_array('client_id', $cols)) {
             $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `client_id` INT DEFAULT NULL, ADD KEY `client_id` (`client_id`)");
+        }
+        if (!in_array('checkin_reminder_sent', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `checkin_reminder_sent` TINYINT DEFAULT 0");
+        }
+        if (!in_array('overdue_reminder_sent', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `overdue_reminder_sent` TINYINT DEFAULT 0");
+        }
+    }
+
+    // Token público (calendario de disponibilidad + feed iCal) para instalaciones
+    // de resources creadas antes de que existiera esta funcionalidad.
+    private static function migrate_resources() {
+        global $wpdb;
+        $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `resources`", ARRAY_A), 'Field');
+        if (!in_array('public_token', $cols)) {
+            $wpdb->query("ALTER TABLE `resources` ADD COLUMN `public_token` VARCHAR(64) DEFAULT NULL, ADD KEY `public_token` (`public_token`)");
         }
     }
 
