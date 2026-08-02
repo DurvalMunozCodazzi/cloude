@@ -223,6 +223,13 @@ if ($method === 'PUT' && $action === 'update') {
         }
     }
 
+    // Defensa en profundidad: un guardado nunca debe poder dejar la reserva
+    // sin recurso o sin nombre de huésped, aunque el frontend mande un valor
+    // vacío/roto por algún bug — sin esto, una reserva con resource_id nulo
+    // queda invisible en todos los listados (hacen JOIN con resources).
+    if (array_key_exists('resource_id', $b) && !intval($b['resource_id'])) rtErr('Falta el recurso de la reserva');
+    if (array_key_exists('guest_name', $b) && trim((string)$b['guest_name']) === '') rtErr('El nombre del huésped es requerido');
+
     $sets = []; $vals = [];
     $allowed = ['resource_id','client_id','guest_name','guest_email','guest_phone','guest_doc','check_in','check_out',
                 'is_hourly','adults','children','total_price','status','payment_method',

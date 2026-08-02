@@ -1633,11 +1633,17 @@ function renderResourcePanel() {
 }
 
 function populateResourceSelect() {
-  const sel = document.getElementById('mrResource');
+  const sel  = document.getElementById('mrResource');
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— Seleccioná un recurso —</option>';
   RESOURCES.forEach(r => {
     sel.innerHTML += `<option value="${r.id}">${typeLabel(r.type)} ${esc(r.name)}</option>`;
   });
+  // Preservar la selección si el modal de reserva sigue abierto mientras
+  // loadData() se ejecuta en segundo plano (p.ej. tras "Confirmar consumos") —
+  // de lo contrario el recurso queda en blanco sin que se note, y un guardado
+  // posterior manda resource_id vacío.
+  if (prev) sel.value = prev;
   sel.onchange = () => recalcPrice(true);
 }
 
