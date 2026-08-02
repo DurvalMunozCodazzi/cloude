@@ -130,6 +130,19 @@ class RT_Activator {
             PRIMARY KEY (`id`)
         ) $charset");
 
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `reservation_payments` (
+            `id`             INT NOT NULL AUTO_INCREMENT,
+            `reservation_id` INT NOT NULL,
+            `amount`         DECIMAL(10,2) NOT NULL DEFAULT 0,
+            `method`         VARCHAR(50)  DEFAULT 'cash',
+            `payment_date`   DATE         DEFAULT NULL,
+            `notes`          VARCHAR(500) DEFAULT NULL,
+            `created_by`     INT          DEFAULT NULL,
+            `created_at`     DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `reservation_id` (`reservation_id`)
+        ) $charset");
+
         self::migrate_extras_catalog();
         self::migrate_users();
     }

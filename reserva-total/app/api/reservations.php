@@ -34,6 +34,33 @@ function calcTotal(array $row, array $extras) {
     return round($base + $extTotal, 2);
 }
 
+// ── Helper: pagos registrados de una reserva ─────────────────
+function loadPayments(PDO $db, $reservationId) {
+    $st = $db->prepare("SELECT id,amount,method,payment_date,notes,created_at
+                         FROM reservation_payments WHERE reservation_id=? ORDER BY payment_date,id");
+    $st->execute([$reservationId]);
+    return $st->fetchAll();
+}
+
+// ── Helper: adjunta extras + pagos + totales a una fila de reserva ───
+function attachTotals(PDO $db, array $row) {
+    $extras   = loadExtras($db, $row['id']);
+    $payments = loadPayments($db, $row['id']);
+    $extTotal  = 0;
+    foreach ($extras as $ex) $extTotal += floatval($ex['price']) * intval($ex['qty']);
+    $paidTotal = 0;
+    foreach ($payments as $p) $paidTotal += floatval($p['amount']);
+    $grand = round(floatval($row['total_price']) + $extTotal, 2);
+
+    $row['extras']       = $extras;
+    $row['extras_total'] = round($extTotal, 2);
+    $row['grand_total']  = $grand;
+    $row['payments']     = $payments;
+    $row['paid_total']   = round($paidTotal, 2);
+    $row['balance']      = round($grand - $paidTotal, 2);
+    return $row;
+}
+
 // ── GET list — por mes o por recurso ─────────────────────────
 if ($method === 'GET' && $action === 'list') {
     $year  = intval($_GET['year']  ?? date('Y'));
@@ -56,15 +83,7 @@ if ($method === 'GET' && $action === 'list') {
     $st = $db->prepare($sql); $st->execute($params);
     $rows = $st->fetchAll();
 
-    // Cargar extras para cada reserva
-    foreach ($rows as &$row) {
-        $extras = loadExtras($db, $row['id']);
-        $extTotal = 0;
-        foreach ($extras as $ex) $extTotal += floatval($ex['price']) * intval($ex['qty']);
-        $row['extras']      = $extras;
-        $row['extras_total'] = round($extTotal, 2);
-        $row['grand_total']  = round(floatval($row['total_price']) + $extTotal, 2);
-    }
+    foreach ($rows as &$row) $row = attachTotals($db, $row);
     unset($row);
 
     rtOut(['reservations' => $rows]);
@@ -79,12 +98,7 @@ if ($method === 'GET' && $action === 'get') {
     $st->execute([$id]);
     $row = $st->fetch();
     if (!$row) rtErr('Reserva no encontrada', 404);
-    $extras = loadExtras($db, $id);
-    $extTotal = 0;
-    foreach ($extras as $ex) $extTotal += floatval($ex['price']) * intval($ex['qty']);
-    $row['extras']       = $extras;
-    $row['extras_total'] = round($extTotal, 2);
-    $row['grand_total']  = round(floatval($row['total_price']) + $extTotal, 2);
+    $row = attachTotals($db, $row);
     rtOut(['reservation' => $row]);
 }
 
@@ -139,10 +153,7 @@ if ($method === 'POST' && $action === 'create') {
         FROM reservations r JOIN resources res ON res.id=r.resource_id WHERE r.id=?");
     $st->execute([$newId]);
     $row = $st->fetch();
-    $extras = loadExtras($db, $newId);
-    $extTotal = 0;
-    foreach ($extras as $ex) $extTotal += floatval($ex['price']) * intval($ex['qty']);
-    $row['extras'] = $extras; $row['extras_total'] = round($extTotal,2); $row['grand_total'] = round(floatval($row['total_price'])+$extTotal,2);
+    $row = attachTotals($db, $row);
     rtOut(['reservation' => $row], 201);
 }
 
@@ -189,6 +200,32 @@ if ($method === 'PUT' && $action === 'update') {
 if ($method === 'DELETE' && $action === 'cancel') {
     if (!$id) rtErr('ID requerido');
     $db->prepare("UPDATE reservations SET status='cancelled' WHERE id=?")->execute([$id]);
+    rtOut(['ok' => true]);
+}
+
+// ── POST agregar pago / seña ──────────────────────────────────
+if ($method === 'POST' && $action === 'add_payment') {
+    if (!$id) rtErr('ID de reserva requerido');
+    $chk = $db->prepare("SELECT id FROM reservations WHERE id=?"); $chk->execute([$id]);
+    if (!$chk->fetch()) rtErr('Reserva no encontrada', 404);
+
+    $b      = json_decode(file_get_contents('php://input'), true);
+    $amount = floatval($b['amount'] ?? 0);
+    if ($amount <= 0) rtErr('El monto debe ser mayor a cero');
+    $date   = trim($b['payment_date'] ?? '') ?: date('Y-m-d');
+
+    $db->prepare("INSERT INTO reservation_payments (reservation_id,amount,method,payment_date,notes,created_by)
+                  VALUES (?,?,?,?,?,?)")
+       ->execute([$id, $amount, trim($b['method'] ?? 'cash'), $date, trim($b['notes'] ?? ''), $me['id']]);
+
+    rtOut(['ok' => true, 'payments' => loadPayments($db, $id)], 201);
+}
+
+// ── DELETE eliminar pago ──────────────────────────────────────
+if ($method === 'DELETE' && $action === 'delete_payment') {
+    $paymentId = intval($_GET['payment_id'] ?? 0);
+    if (!$paymentId) rtErr('payment_id requerido');
+    $db->prepare("DELETE FROM reservation_payments WHERE id=?")->execute([$paymentId]);
     rtOut(['ok' => true]);
 }
 

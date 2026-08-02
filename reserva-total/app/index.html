@@ -1020,6 +1020,42 @@ async function openReservationDetail(id) {
         return html || '<div style="font-size:12px;color:var(--t3)">Sin precio cargado</div>';
       })()}
     </div>
+    <div class="sp-section">
+      <div class="sp-label" style="margin-bottom:8px">Pagos</div>
+      ${(() => {
+        const payments = rv.payments || [];
+        const paid     = rv.paid_total != null ? rv.paid_total : payments.reduce((s,p)=>s+parseFloat(p.amount||0),0);
+        const balance  = rv.balance   != null ? rv.balance   : (rv.grand_total||0) - paid;
+        let html = payments.length ? payments.map(p => {
+          const [yy,mm,dd] = (p.payment_date||'').split('-');
+          const fdate = dd ? `${dd}/${mm}/${yy}` : '—';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:6px">
+            <span>${fdate} · ${payLabel(p.method)}${p.notes ? ' · '+esc(p.notes) : ''}</span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <strong style="color:var(--t1)">$${fmt(p.amount)}</strong>
+              <button class="btn-icon btn-sm" onclick="deletePayment(${p.id},${rv.id})" title="Eliminar pago"><i class="fas fa-times" style="color:#ef4444"></i></button>
+            </span>
+          </div>`;
+        }).join('') : '<div style="font-size:12px;color:var(--t3);margin-bottom:6px">Sin pagos registrados</div>';
+        html += `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:8px;border-top:1px solid var(--bdr);margin-top:4px">
+          <span>Pagado</span><span style="color:var(--confirmed)">$${fmt(paid)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:2px">
+          <span>Saldo pendiente</span><span style="color:${balance>0?'var(--cancelled)':'var(--confirmed)'}">$${fmt(balance)}</span>
+        </div>`;
+        return html;
+      })()}
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <input type="number" id="npAmount" placeholder="Monto" min="0" step="0.01">
+        <select id="npMethod">
+          <option value="cash">💵 Efectivo</option>
+          <option value="transfer">🏦 Transferencia</option>
+          <option value="mp">💳 MercadoPago</option>
+          <option value="card">💳 Tarjeta</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="addPayment(${rv.id})"><i class="fas fa-plus"></i> Registrar pago</button>
+    </div>
     ${rv.notes ? `<div class="sp-section"><div class="sp-label">Notas</div><div class="sp-value" style="font-size:12px;color:var(--t2)">${esc(rv.notes)}</div></div>` : ''}
     ${rv.internal_notes ? `<div class="sp-section"><div class="sp-label">Notas internas</div><div class="sp-value" style="font-size:12px;color:var(--t2)">${esc(rv.internal_notes)}</div></div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
@@ -1154,6 +1190,28 @@ async function saveReservation() {
   } catch(e) {
     notify(e.message, 'er');
   }
+}
+
+async function addPayment(reservationId) {
+  const amount = parseFloat(document.getElementById('npAmount').value);
+  const method = document.getElementById('npMethod').value;
+  if (!amount || amount <= 0) { notify('Ingresá un monto válido', 'er'); return; }
+  try {
+    await api('reservations.php?action=add_payment&id=' + reservationId, 'POST', { amount, method });
+    notify('Pago registrado', 'ok');
+    await loadData();
+    openReservationDetail(reservationId);
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deletePayment(paymentId, reservationId) {
+  if (!confirm('¿Eliminar este pago?')) return;
+  try {
+    await api('reservations.php?action=delete_payment&payment_id=' + paymentId, 'DELETE');
+    notify('Pago eliminado', 'wa');
+    await loadData();
+    openReservationDetail(reservationId);
+  } catch(e) { notify(e.message, 'er'); }
 }
 
 async function cancelReservation(id) {
