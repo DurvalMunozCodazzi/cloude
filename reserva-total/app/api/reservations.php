@@ -93,11 +93,12 @@ if ($method === 'GET' && $action === 'list') {
     $from = sprintf('%04d-%02d-01 00:00:00', $year, $month);
     $to   = date('Y-m-t 23:59:59', strtotime($from));
 
+    $statusFilter = !empty($_GET['include_cancelled']) ? '1=1' : "r.status != 'cancelled'";
     $sql  = "SELECT r.*, res.name as resource_name, res.color as resource_color,
                     res.price_per_day, res.price_per_hour
              FROM reservations r
              JOIN resources res ON res.id = r.resource_id
-             WHERE r.status != 'cancelled'
+             WHERE $statusFilter
                AND r.check_in <= ? AND r.check_out >= ?";
     $params = [$to, $from];
     if ($resId) { $sql .= " AND r.resource_id=?"; $params[] = $resId; }

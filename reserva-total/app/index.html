@@ -317,6 +317,12 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 
   <!-- LIST VIEW -->
   <div id="listView">
+    <div style="display:flex;justify-content:flex-end;padding:8px 4px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer">
+        <input type="checkbox" id="cbShowCancelled" onchange="toggleShowCancelled(this.checked)">
+        Mostrar reservas anuladas
+      </label>
+    </div>
     <table class="rt-table">
       <thead>
         <tr>
@@ -1037,7 +1043,7 @@ async function loadData() {
   try {
     const [rRes, resData, blkData] = await Promise.all([
       api('resources.php?action=list'),
-      api(`reservations.php?action=list&year=${YEAR}&month=${MONTH}`),
+      api(`reservations.php?action=list&year=${YEAR}&month=${MONTH}` + (SHOW_CANCELLED ? '&include_cancelled=1' : '')),
       api(`blocks.php?action=list&year=${YEAR}&month=${MONTH}`),
       loadExtrasCatalog(),
       loadSeasonalRates(),
@@ -1217,10 +1223,11 @@ function renderGantt() {
 function renderList() {
   const tbody = document.getElementById('listBody');
   const empty = document.getElementById('listEmpty');
-  const active = RESERVATIONS.filter(r => r.status !== 'cancelled');
+  const rows = SHOW_CANCELLED ? RESERVATIONS : RESERVATIONS.filter(r => r.status !== 'cancelled');
   tbody.innerHTML = '';
-  empty.style.display = active.length ? 'none' : '';
-  active.forEach(rv => {
+  empty.style.display = rows.length ? 'none' : '';
+  rows.forEach(rv => {
+    const isCancelled = rv.status === 'cancelled';
     const ci = new Date(rv.check_in.replace(' ','T'));
     const co = new Date(rv.check_out.replace(' ','T'));
     const dur = durLabel(ci, co);
@@ -1237,6 +1244,7 @@ function renderList() {
       totalHtml += '</span>';
     }
     const tr = document.createElement('tr');
+    if (isCancelled) tr.style.opacity = '.55';
     tr.innerHTML = `
       <td><span class="res-chip" style="background:${rc}22;color:${rc}">
         <span style="width:8px;height:8px;border-radius:50%;background:${rc};flex-shrink:0;display:inline-block"></span>
@@ -1248,15 +1256,30 @@ function renderList() {
       <td>${fmtDate(rv.check_out)}</td>
       <td>${dur}</td>
       <td>${totalHtml}</td>
-      <td><span class="status-badge" style="background:${sc}22;color:${sc}">${sl}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
+      <td><span class="status-badge" style="background:${sc}22;color:${sc}">${isCancelled ? 'Anulada' : sl}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">${isCancelled ? `
+        <button class="btn btn-primary btn-sm" onclick="restoreReservation(${rv.id})"><i class="fas fa-undo"></i> Restaurar</button>` : `
         <button class="btn-icon" onclick="openEditReservation(${rv.id})" title="Abrir reserva"><i class="fas fa-edit"></i></button>
         <button class="btn-icon" onclick="printReservation(${rv.id})" title="Imprimir comprobante"><i class="fas fa-print"></i></button>
         <button class="btn-icon" onclick="sendReservationSummary(${rv.id},'${esc(rv.guest_email||'')}')" title="${rv.guest_email ? 'Enviar al cliente' : 'Sin email del huésped'}" ${rv.guest_email ? '' : 'disabled style="opacity:.3;cursor:not-allowed"'}><i class="fas fa-paper-plane"></i></button>
-        <button class="btn-icon" style="color:#f87171" onclick="cancelReservation(${rv.id})" title="Cancelar"><i class="fas fa-ban"></i></button>
+        <button class="btn-icon" style="color:#f87171" onclick="cancelReservation(${rv.id},'${esc(rv.guest_name||'')}')" title="Anular reserva"><i class="fas fa-ban"></i></button>`}
       </td>`;
     tbody.appendChild(tr);
   });
+}
+
+let SHOW_CANCELLED = false;
+function toggleShowCancelled(on) {
+  SHOW_CANCELLED = on;
+  loadData();
+}
+
+async function restoreReservation(id) {
+  try {
+    await api('reservations.php?action=update&id=' + id, 'PUT', { status: 'confirmed' });
+    notify('Reserva restaurada ✔ — vuelve a verse en el calendario', 'ok');
+    await loadData();
+  } catch(e) { notify(e.message, 'er'); }
 }
 
 // ── NEW / EDIT RESERVATION ────────────────────────────────────────────────
@@ -1549,11 +1572,11 @@ async function refreshReservationPayments(reservationId) {
   if (rv) renderReservationPayments(rv);
 }
 
-async function cancelReservation(id) {
-  if (!confirm('¿Cancelar esta reserva?')) return;
+async function cancelReservation(id, name = '') {
+  if (!confirm(`¿ANULAR la reserva${name ? ' de "' + name + '"' : ''}?\n\nDejará de verse en el calendario, pero NO se borra: podés recuperarla desde Lista → "Mostrar reservas anuladas" → Restaurar.`)) return;
   try {
     await api('reservations.php?action=cancel&id=' + id, 'DELETE');
-    notify('Reserva cancelada', 'wa');
+    notify('Reserva anulada — recuperable desde Lista → "Mostrar reservas anuladas"', 'wa');
     await loadData();
   } catch(e) { notify(e.message, 'er'); }
 }
@@ -2612,7 +2635,7 @@ async function refreshCatalogMgmt() {
           <i class="fas ${esc(ex.icon||'fa-star')}" style="color:var(--acc)"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}${ex.sku?' <span style="font-weight:400;color:var(--t3)">('+esc(ex.sku)+')</span>':''}</div>
+          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}${ex.sku?' <span style="font-weight:400;color:var(--t3)">('+esc(ex.sku)+')</span>':''}${ex.active?'':' <span style="font-size:10px;font-weight:700;color:#ef4444;background:#ef444422;padding:2px 8px;border-radius:6px">OCULTO — no aparece en reservas, tocá el ojo 👁 para activarlo</span>'}</div>
           <div style="font-size:11px;color:var(--t3)">${esc(ex.category||'General')} · $${fmt(ex.price)}/u${ex.description?' · '+esc(ex.description):''} · ${ex.stock===null||ex.stock===undefined?'Sin control de stock':'Stock: '+ex.stock}</div>
         </div>
         <button class="btn-icon btn-sm" onclick="editCatalogExtra(${ex.id})" title="Editar"><i class="fas fa-edit"></i></button>
