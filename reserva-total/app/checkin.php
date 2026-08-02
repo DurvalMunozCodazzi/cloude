@@ -72,8 +72,8 @@ $ci = new DateTime($rv['check_in']);
       <input type="email" name="guest_email" value="<?= htmlspecialchars($rv['guest_email'] ?? '') ?>">
       <label>Teléfono</label>
       <input type="tel" name="guest_phone" value="<?= htmlspecialchars($rv['guest_phone'] ?? '') ?>">
-      <label>DNI / Pasaporte</label>
-      <input type="text" name="guest_doc" value="<?= htmlspecialchars($rv['guest_doc'] ?? '') ?>">
+      <label>DNI / Pasaporte *</label>
+      <input type="text" name="guest_doc" value="<?= htmlspecialchars($rv['guest_doc'] ?? '') ?>" required placeholder="Requerido por ley para el registro de huéspedes">
       <label>Dirección</label>
       <input type="text" name="guest_address" value="<?= htmlspecialchars($rv['guest_address'] ?? '') ?>">
       <label>Foto del DNI (opcional)</label>

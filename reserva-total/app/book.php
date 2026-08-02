@@ -96,8 +96,8 @@ $status = $_GET['status'] ?? '';
       <div><label>Email</label><input type="email" id="bkEmail" placeholder="tu@email.com"></div>
       <div><label>Teléfono / WhatsApp</label><input type="tel" id="bkPhone" placeholder="11 5555 1234"></div>
     </div>
-    <label>DNI / Pasaporte</label>
-    <input type="text" id="bkDoc" placeholder="Opcional">
+    <label>DNI / Pasaporte *</label>
+    <input type="text" id="bkDoc" placeholder="Requerido por ley para el registro de huéspedes">
 
     <button id="bkBtn" onclick="submitBooking()" disabled>Elegí alojamiento y fechas</button>
     <div class="msg" id="bkMsg"></div>
@@ -229,6 +229,7 @@ async function submitBooking() {
   const email = document.getElementById('bkEmail').value.trim();
   const phone = document.getElementById('bkPhone').value.trim();
   if (!name) { msg.className = 'msg err'; msg.textContent = 'Ingresá tu nombre completo'; return; }
+  if (!document.getElementById('bkDoc').value.trim()) { msg.className = 'msg err'; msg.textContent = 'Ingresá tu DNI o pasaporte — es obligatorio para el registro de huéspedes'; return; }
   if (!email && !phone) { msg.className = 'msg err'; msg.textContent = 'Dejanos un email o teléfono para contactarte'; return; }
 
   const btn = document.getElementById('bkBtn');

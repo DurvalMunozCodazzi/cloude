@@ -23,6 +23,7 @@ if ($method === 'POST' && $action === 'submit') {
     $accepted  = !empty($_POST['accepted_terms']);
 
     if (!$name)      rtErr('El nombre es requerido');
+    if (!$doc)       rtErr('El DNI o pasaporte es obligatorio para el registro de huéspedes');
     if (!$signature) rtErr('Ingresá tu nombre completo como firma');
     if (!$accepted)  rtErr('Debés aceptar los términos y condiciones');
 

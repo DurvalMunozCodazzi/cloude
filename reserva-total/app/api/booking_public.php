@@ -73,6 +73,7 @@ if ($method === 'POST' && $action === 'create') {
 
     if (!$resId || !$checkIn || !$checkOut) rtErr('Elegí alojamiento y fechas');
     if (!$guestName) rtErr('Ingresá tu nombre completo');
+    if (!$doc) rtErr('El DNI o pasaporte es obligatorio para el registro de huéspedes');
     if (!$email && !$phone) rtErr('Dejanos un email o un teléfono para contactarte');
     if ($checkOut <= $checkIn) rtErr('La salida debe ser posterior a la entrada');
 
