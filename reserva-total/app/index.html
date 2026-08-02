@@ -2552,16 +2552,16 @@ function renderExtrasSelected() {
           <span style="font-size:11px;color:var(--t3)">$</span>
           <input type="number" placeholder="0" value="${ex.price > 0 ? ex.price : ''}"
                  min="0" step="0.01"
-                 onchange="extrasData[${i}].price=parseFloat(this.value)||0;updateExtrasTotal()"
+                 oninput="onCustomExtraAmt(${i},'price',this.value)"
                  style="width:80px;font-size:12px;text-align:right">
         </div>
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
           <span style="font-size:11px;color:var(--t3)">Cant.</span>
           <input type="number" placeholder="1" value="${ex.qty||1}" min="1"
-                 onchange="extrasData[${i}].qty=parseInt(this.value)||1;updateExtrasTotal()"
+                 oninput="onCustomExtraAmt(${i},'qty',this.value)"
                  style="width:48px;font-size:12px;text-align:center">
         </div>
-        <span class="es-amt" style="flex-shrink:0;min-width:64px;text-align:right">$${fmt(sub)}</span>
+        <span class="es-amt" id="es-amt-${i}" style="flex-shrink:0;min-width:64px;text-align:right">$${fmt(sub)}</span>
         <button type="button" class="btn-rm-extra" title="Quitar" onclick="removeExtra(${i})">×</button>`;
     }
     el.appendChild(row);
@@ -2640,6 +2640,14 @@ function onCustomExtraName(i, value) {
   updateExtrasTotal();
 }
 
+function onCustomExtraAmt(i, field, value) {
+  extrasData[i][field] = field === 'price' ? (parseFloat(value)||0) : (parseInt(value)||1);
+  const sub = (parseFloat(extrasData[i].price)||0) * (parseInt(extrasData[i].qty)||1);
+  const amtEl = document.getElementById('es-amt-' + i);
+  if (amtEl) amtEl.textContent = '$' + fmt(sub);
+  updateExtrasTotal();
+}
+
 function getExtrasPayload() {
   return extrasData.filter(ex => ex.name || ex.catalogId).map(ex => ({
     name: ex.name || '', price: parseFloat(ex.price)||0, qty: parseInt(ex.qty)||1
@@ -2699,12 +2707,12 @@ async function refreshCatalogMgmt() {
           <i class="fas ${esc(ex.icon||'fa-star')}" style="color:var(--acc)"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'}">${esc(ex.name)}${ex.sku?' <span style="font-weight:400;color:var(--t3)">('+esc(ex.sku)+')</span>':''}${ex.active?'':' <span style="font-size:10px;font-weight:700;color:#ef4444;background:#ef444422;padding:2px 8px;border-radius:6px">OCULTO — no aparece en reservas, tocá el ojo 👁 para activarlo</span>'}</div>
+          <div style="font-size:13px;font-weight:700;color:${ex.active?'var(--t1)':'var(--t3)'};${ex.active?'':'text-decoration:line-through'}">${esc(ex.name)}${ex.sku?' <span style="font-weight:400;color:var(--t3)">('+esc(ex.sku)+')</span>':''}${ex.active?'':' <span style="font-size:10px;font-weight:700;color:var(--t3);background:var(--t3)22;padding:2px 8px;border-radius:6px;text-decoration:none;display:inline-block">OCULTO — no aparece en reservas, tocá el ojo 👁 para activarlo</span>'}</div>
           <div style="font-size:11px;color:var(--t3)">${esc(ex.category||'General')} · $${fmt(ex.price)}/u${ex.description?' · '+esc(ex.description):''} · ${ex.stock===null||ex.stock===undefined?'Sin control de stock':'Stock: '+ex.stock}</div>
         </div>
         <button class="btn-icon btn-sm" onclick="editCatalogExtra(${ex.id})" title="Editar"><i class="fas fa-edit"></i></button>
-        <button class="btn-icon btn-sm" onclick="toggleCatalogExtra(${ex.id})" title="${ex.active?'Desactivar':'Activar'}" style="color:${ex.active?'var(--t3)':'var(--acc)'}">
-          <i class="fas ${ex.active?'fa-eye-slash':'fa-eye'}"></i>
+        <button class="btn-icon btn-sm" onclick="toggleCatalogExtra(${ex.id})" title="${ex.active?'Ocultar (dejar de mostrar en reservas)':'Mostrar (activar en reservas)'}" style="color:${ex.active?'var(--acc)':'var(--t3)'}">
+          <i class="fas ${ex.active?'fa-eye':'fa-eye-slash'}"></i>
         </button>
         <button class="btn-icon btn-sm" onclick="deleteCatalogExtra(${ex.id},'${esc(ex.name)}')" title="Eliminar" style="color:#f87171"><i class="fas fa-trash"></i></button>`;
       list.appendChild(row);
