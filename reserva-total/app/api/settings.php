@@ -8,26 +8,30 @@ $action = $_GET['action'] ?? '';
 
 // ── GET settings ──────────────────────────────────────────────
 if ($method === 'GET' && $action === 'get') {
-    $keys = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email'];
+    $keys = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email',
+             'wapp_enabled','wapp_token','wapp_phone_id'];
     $placeholders = implode(',', array_fill(0, count($keys), '?'));
     $st = $db->prepare("SELECT meta_key, meta_value FROM rt_settings WHERE meta_key IN ($placeholders)");
     $st->execute($keys);
     $rows = $st->fetchAll();
     $data = [];
     foreach ($rows as $r) $data[$r['meta_key']] = $r['meta_value'];
-    // Mask password
+    // Enmascarar credenciales sensibles
     if (isset($data['smtp_pass'])) $data['smtp_pass_set'] = true;
     unset($data['smtp_pass']);
+    if (isset($data['wapp_token'])) $data['wapp_token_set'] = true;
+    unset($data['wapp_token']);
     rtOut(['settings' => $data]);
 }
 
 // ── POST save ────────────────────────────────────────────────
 if ($method === 'POST' && $action === 'save') {
     $b = json_decode(file_get_contents('php://input'), true);
-    $allowed = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email'];
+    $allowed = ['smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_name','smtp_enabled','notify_email',
+                'wapp_enabled','wapp_token','wapp_phone_id'];
     foreach ($allowed as $key) {
         if (!array_key_exists($key, $b)) continue;
-        if ($key === 'smtp_pass' && $b[$key] === '') continue; // no sobreescribir si vacío
+        if (in_array($key, ['smtp_pass','wapp_token']) && $b[$key] === '') continue; // no sobreescribir si vacío
         $db->prepare("INSERT INTO rt_settings (meta_key,meta_value) VALUES (?,?)
                       ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)")
            ->execute([$key, $b[$key]]);

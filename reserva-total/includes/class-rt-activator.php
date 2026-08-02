@@ -275,6 +275,9 @@ class RT_Activator {
         if (!in_array('guest_address', $cols)) {
             $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `guest_address` VARCHAR(300) DEFAULT ''");
         }
+        if (!in_array('wapp_reminder_sent', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `wapp_reminder_sent` TINYINT DEFAULT 0");
+        }
     }
 
     // Token público (calendario de disponibilidad + feed iCal) + estado de

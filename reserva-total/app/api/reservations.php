@@ -230,7 +230,7 @@ if ($method === 'PUT' && $action === 'update') {
     }
     // Si cambian las fechas, volver a habilitar los recordatorios automáticos
     // para que se re-evalúen contra la nueva fecha en el próximo cron.
-    if (array_key_exists('check_in', $b))  { $sets[] = 'checkin_reminder_sent=0'; }
+    if (array_key_exists('check_in', $b))  { $sets[] = 'checkin_reminder_sent=0'; $sets[] = 'wapp_reminder_sent=0'; }
     if (array_key_exists('check_out', $b)) { $sets[] = 'overdue_reminder_sent=0'; $sets[] = 'housekeeping_flagged=0'; }
     if ($sets) {
         $vals[] = $id;

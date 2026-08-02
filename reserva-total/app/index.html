@@ -480,6 +480,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       </div>
       <button type="button" class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="addPayment(editReservationId)"><i class="fas fa-plus"></i> Registrar pago</button>
       <button type="button" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="sendReservationSummary(editReservationId, document.getElementById('mrEmail').value.trim())"><i class="fas fa-paper-plane"></i> Enviar comprobante al huésped</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:6px;color:#16a34a" onclick="sendWhatsAppReminder(editReservationId)"><i class="fab fa-whatsapp"></i> Recordar por WhatsApp</button>
     </div>
     <div class="fg" id="mrCheckinSection" style="display:none">
       <label>Check-in digital</label>
@@ -697,6 +698,22 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <div class="fg" style="margin-top:12px">
         <label>Email para avisos internos <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(saldos pendientes de reservas ya finalizadas)</span></label>
         <input id="notifyEmail" type="email" placeholder="tu@email.com">
+      </div>
+      <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px"><i class="fab fa-whatsapp" style="color:#16a34a"></i> WhatsApp automático (opcional)</div>
+        <p style="font-size:11px;color:var(--t2);margin-bottom:12px;line-height:1.6">
+          Los botones de WhatsApp de cada reserva funcionan siempre (abren WhatsApp con el mensaje armado).
+          Si además querés que los recordatorios de check-in salgan <strong>solos</strong>, cargá acá las credenciales de la
+          <strong>API de WhatsApp Business de Meta</strong> (Meta for Developers → tu app → WhatsApp → API Setup).
+        </p>
+        <div class="row2">
+          <div class="fg"><label>Phone Number ID</label><input id="wappPhoneId" type="text" placeholder="123456789012345"></div>
+          <div class="fg"><label>Token permanente</label><input id="wappToken" type="password" placeholder="••••••••••••••••"></div>
+        </div>
+        <div class="fg" style="display:flex;align-items:center;gap:10px;margin-top:4px;margin-bottom:0">
+          <input id="wappEnabled" type="checkbox" style="width:auto;accent-color:#16a34a">
+          <label style="margin:0;text-transform:none;font-size:13px;font-weight:600;color:var(--t1)">Enviar recordatorios de check-in por WhatsApp automáticamente</label>
+        </div>
       </div>
       <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
         <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Probar configuración</div>
@@ -1313,6 +1330,7 @@ async function openReservationDetail(id) {
       <button class="btn btn-secondary btn-sm" onclick="openEditReservation(${rv.id})"><i class="fas fa-edit"></i> Editar</button>
       <button class="btn btn-secondary btn-sm" onclick="printReservation(${rv.id})"><i class="fas fa-print"></i> Imprimir</button>
       <button class="btn btn-secondary btn-sm" onclick="sendReservationSummary(${rv.id},'${esc(rv.guest_email||'')}')" ${rv.guest_email ? '' : 'disabled title="Sin email del huésped"'} style="${rv.guest_email ? '' : 'opacity:.4;cursor:not-allowed'}"><i class="fas fa-paper-plane"></i> Enviar al cliente</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendWhatsAppReminder(${rv.id})" ${rv.guest_phone ? '' : 'disabled title="Sin teléfono del huésped"'} style="${rv.guest_phone ? 'color:#16a34a' : 'opacity:.4;cursor:not-allowed'}"><i class="fab fa-whatsapp"></i> WhatsApp</button>
       <button class="btn btn-danger btn-sm" onclick="cancelReservation(${rv.id})"><i class="fas fa-ban"></i> Cancelar</button>
     </div>
   `;
@@ -2762,6 +2780,41 @@ function printReservation(id) {
   if (!w) notify('Habilitá los popups del navegador para imprimir', 'wa');
 }
 
+// ── WHATSAPP ──────────────────────────────────────────────────────────────
+// Normalización de teléfono argentino a formato wa.me (549 + área + número),
+// espejo de rtWappPhone() del backend.
+function waPhone(raw) {
+  let d = String(raw || '').replace(/\D+/g, '');
+  if (!d) return '';
+  if (d.startsWith('549')) return d;
+  if (d.startsWith('54'))  return '549' + d.slice(2);
+  if (d.startsWith('0'))   d = d.slice(1);
+  if (d.length === 12) {
+    for (let i = 2; i <= 4; i++) {
+      if (d.substr(i, 2) === '15') { d = d.slice(0, i) + d.slice(i + 2); break; }
+    }
+  }
+  return '549' + d;
+}
+
+function sendWhatsAppReminder(reservationId) {
+  const rv = RESERVATIONS.find(r => r.id == reservationId);
+  if (!rv || !rv.guest_phone) { notify('El huésped no tiene teléfono cargado', 'er'); return; }
+  const phone = waPhone(rv.guest_phone);
+  if (!phone) { notify('No se pudo interpretar el teléfono', 'er'); return; }
+
+  const ci = new Date(rv.check_in.replace(' ','T'));
+  const fecha = `${String(ci.getDate()).padStart(2,'0')}/${String(ci.getMonth()+1).padStart(2,'0')}/${ci.getFullYear()}`;
+  const hora  = `${String(ci.getHours()).padStart(2,'0')}:${String(ci.getMinutes()).padStart(2,'0')}`;
+
+  let msg = `Hola ${rv.guest_name}! Te recordamos tu reserva en ${rv.resource_name} — check-in el ${fecha} a las ${hora} hs.`;
+  const balance = rv.balance != null ? parseFloat(rv.balance) : 0;
+  if (balance > 0) msg += ` Saldo pendiente: $${fmt(balance)}.`;
+  msg += ' ¡Te esperamos!';
+
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
 async function sendReservationSummary(id, email) {
   if (!email) { notify('El huésped no tiene email cargado', 'er'); return; }
   if (!confirm(`¿Enviar resumen de reserva a ${email}?`)) return;
@@ -2786,6 +2839,10 @@ async function openSmtpModal() {
     document.getElementById('smtpEnabled').checked = s.smtp_enabled === '1';
     document.getElementById('notifyEmail').value  = s.notify_email || '';
     document.getElementById('smtpTestTo').value   = '';
+    document.getElementById('wappPhoneId').value  = s.wapp_phone_id || '';
+    document.getElementById('wappToken').value    = '';
+    document.getElementById('wappToken').placeholder = s.wapp_token_set ? '••••••••••••••••  (guardado)' : '••••••••••••••••';
+    document.getElementById('wappEnabled').checked = s.wapp_enabled === '1';
   } catch(e) {
     notify('Error cargando configuración: ' + e.message, 'er'); return;
   }
@@ -2801,6 +2858,9 @@ async function saveSmtp() {
     smtp_from_name: document.getElementById('smtpFromName').value.trim(),
     smtp_enabled:   document.getElementById('smtpEnabled').checked ? '1' : '0',
     notify_email:   document.getElementById('notifyEmail').value.trim(),
+    wapp_phone_id:  document.getElementById('wappPhoneId').value.trim(),
+    wapp_token:     document.getElementById('wappToken').value,
+    wapp_enabled:   document.getElementById('wappEnabled').checked ? '1' : '0',
   };
   try {
     await api('settings.php?action=save', 'POST', body);

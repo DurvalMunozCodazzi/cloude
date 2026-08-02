@@ -5,6 +5,7 @@
 // reserva-total.php), sin necesidad de configurar nada manualmente.
 require_once '../config.php';
 require_once '../smtp.php';
+require_once '../wapp.php';
 require_once '../ical_sync.php';
 
 $secret = trim($_GET['secret'] ?? '');
@@ -78,6 +79,29 @@ if ($notifyEmail) {
     }
 }
 
+// ── Recordatorio de check-in por WhatsApp (si la Cloud API está configurada) ──
+$sentWapp = 0;
+$wappCfg  = getWappConfig($db);
+if ($wappCfg['enabled'] && $wappCfg['token'] && $wappCfg['phone_id']) {
+    $stw = $db->prepare("SELECT r.*, res.name as resource_name
+        FROM reservations r JOIN resources res ON res.id = r.resource_id
+        WHERE r.status NOT IN ('cancelled','completed')
+          AND r.guest_phone IS NOT NULL AND r.guest_phone != ''
+          AND r.wapp_reminder_sent = 0
+          AND r.check_in BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)");
+    $stw->execute();
+    foreach ($stw->fetchAll() as $rv) {
+        $ci  = new DateTime($rv['check_in']);
+        $msg = 'Hola ' . $rv['guest_name'] . '! Te recordamos tu check-in en ' . $rv['resource_name']
+             . ' el ' . $ci->format('d/m/Y') . ' a las ' . $ci->format('H:i') . ' hs. ¡Te esperamos!';
+        $err = sendWhatsApp($rv['guest_phone'], $msg, $wappCfg);
+        if (!$err) {
+            $db->prepare("UPDATE reservations SET wapp_reminder_sent=1 WHERE id=?")->execute([$rv['id']]);
+            $sentWapp++;
+        }
+    }
+}
+
 // ── Limpieza: marcar "sucio" el recurso apenas pasa el checkout de un huésped ──
 $flaggedDirty = 0;
 $st3 = $db->prepare("SELECT id, resource_id FROM reservations
@@ -99,6 +123,7 @@ foreach ($imports as $imp) {
 rtOut([
     'ok' => true,
     'checkin_reminders_sent' => $sentCheckin,
+    'wapp_reminders_sent'    => $sentWapp,
     'overdue_reminders_sent' => $sentOverdue,
     'ical_imports_synced'    => $syncedImports,
     'resources_flagged_dirty' => $flaggedDirty,
