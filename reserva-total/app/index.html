@@ -716,6 +716,22 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
         </div>
       </div>
       <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">💳 Mercado Pago — reserva online</div>
+        <p style="font-size:11px;color:var(--t2);margin-bottom:12px;line-height:1.6">
+          Con esto activado, los huéspedes reservan y pagan la seña solos desde tu página de reserva online
+          (el link está en 📅 Disponibilidad y Sync → Enlaces). El Access Token se saca de
+          <strong>mercadopago.com.ar → Tus integraciones → Credenciales de producción</strong>.
+        </p>
+        <div class="row2">
+          <div class="fg"><label>Access Token</label><input id="mpToken" type="password" placeholder="APP_USR-..."></div>
+          <div class="fg"><label>Seña para confirmar (%)</label><input id="mpDepositPct" type="number" min="1" max="100" placeholder="30"></div>
+        </div>
+        <div class="fg" style="display:flex;align-items:center;gap:10px;margin-top:4px;margin-bottom:0">
+          <input id="mpEnabled" type="checkbox" style="width:auto;accent-color:#009ee3">
+          <label style="margin:0;text-transform:none;font-size:13px;font-weight:600;color:var(--t1)">Habilitar pago de seña con Mercado Pago</label>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bdr)">
         <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Probar configuración</div>
         <div style="display:flex;gap:8px;align-items:flex-end">
           <div class="fg" style="flex:1;margin-bottom:0"><input id="smtpTestTo" type="email" placeholder="Enviar prueba a..."></div>
@@ -802,7 +818,11 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 
     <!-- TAB: ENLACES PÚBLICOS E ICAL -->
     <div id="avTabSync" style="display:none">
-      <div class="fg">
+      <div class="fg" style="padding:12px;background:var(--accg);border-radius:var(--r);border:1px solid var(--acc)">
+        <label style="color:var(--acc)">🛒 Tu página de reserva online (compartila en redes, web, WhatsApp)</label>
+        <div style="display:flex;gap:6px"><input id="bookingPageUrl" type="text" readonly style="font-size:11px"><button class="btn btn-secondary btn-sm" onclick="copyToClipboard('bookingPageUrl')"><i class="fas fa-copy"></i></button></div>
+      </div>
+      <div class="fg" style="margin-top:14px">
         <label>Calendario público / feed iCal de un recurso</label>
         <div style="display:flex;gap:6px">
           <select id="syncResource" style="flex:1"></select>
@@ -2090,6 +2110,7 @@ async function openAvailabilityModal() {
   document.getElementById('syncResource').innerHTML = opts;
   document.getElementById('icalResource').innerHTML = opts;
   document.getElementById('syncLinksBox').style.display = 'none';
+  document.getElementById('bookingPageUrl').value = APP_BASE + 'book.php';
   switchAvTab('blocks');
   await Promise.all([loadBlocksAdminList(), loadRatesList(), loadIcalImportsList(), loadDiscountsList()]);
   openMo('moAvailability');
@@ -2843,6 +2864,10 @@ async function openSmtpModal() {
     document.getElementById('wappToken').value    = '';
     document.getElementById('wappToken').placeholder = s.wapp_token_set ? '••••••••••••••••  (guardado)' : '••••••••••••••••';
     document.getElementById('wappEnabled').checked = s.wapp_enabled === '1';
+    document.getElementById('mpToken').value      = '';
+    document.getElementById('mpToken').placeholder = s.mp_token_set ? 'APP_USR-...  (guardado)' : 'APP_USR-...';
+    document.getElementById('mpDepositPct').value = s.mp_deposit_pct || '30';
+    document.getElementById('mpEnabled').checked  = s.mp_enabled === '1';
   } catch(e) {
     notify('Error cargando configuración: ' + e.message, 'er'); return;
   }
@@ -2861,6 +2886,9 @@ async function saveSmtp() {
     wapp_phone_id:  document.getElementById('wappPhoneId').value.trim(),
     wapp_token:     document.getElementById('wappToken').value,
     wapp_enabled:   document.getElementById('wappEnabled').checked ? '1' : '0',
+    mp_access_token: document.getElementById('mpToken').value,
+    mp_deposit_pct:  document.getElementById('mpDepositPct').value.trim() || '30',
+    mp_enabled:      document.getElementById('mpEnabled').checked ? '1' : '0',
   };
   try {
     await api('settings.php?action=save', 'POST', body);

@@ -278,6 +278,12 @@ class RT_Activator {
         if (!in_array('wapp_reminder_sent', $cols)) {
             $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `wapp_reminder_sent` TINYINT DEFAULT 0");
         }
+        if (!in_array('booking_source', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `booking_source` VARCHAR(20) DEFAULT 'manual'");
+        }
+        if (!in_array('mp_preference_id', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `mp_preference_id` VARCHAR(100) DEFAULT NULL");
+        }
     }
 
     // Token público (calendario de disponibilidad + feed iCal) + estado de

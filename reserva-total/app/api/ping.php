@@ -1,3 +1,3 @@
 <?php
 header('Content-Type: application/json');
-echo json_encode(['ok' => true, 'app' => 'Reserva Total', 'version' => '3.2.0', 'time' => date('c')]);
+echo json_encode(['ok' => true, 'app' => 'Reserva Total', 'version' => '4.0.0', 'time' => date('c')]);

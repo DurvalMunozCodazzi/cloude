@@ -113,6 +113,24 @@ foreach ($st3->fetchAll() as $rv) {
     $flaggedDirty++;
 }
 
+// ── Liberar fechas: cancelar reservas online que nunca pagaron la seña ──────
+// Una reserva hecha desde book.php queda 'pending' hasta que el webhook de MP
+// acredita el pago. Si pasaron 3 horas sin ningún pago, se cancela sola para
+// no bloquear el calendario a otros huéspedes.
+$cancelledStale = 0;
+$stStale = $db->prepare("SELECT r.id FROM reservations r
+    LEFT JOIN reservation_payments p ON p.reservation_id = r.id
+    WHERE r.booking_source='online' AND r.status='pending'
+      AND r.created_at < DATE_SUB(NOW(), INTERVAL 3 HOUR)
+    GROUP BY r.id HAVING COUNT(p.id) = 0");
+$stStale->execute();
+foreach ($stStale->fetchAll() as $row) {
+    $db->prepare("UPDATE reservations SET status='cancelled',
+                  internal_notes=CONCAT(COALESCE(internal_notes,''), ' | Cancelada automáticamente: seña no abonada')
+                  WHERE id=?")->execute([$row['id']]);
+    $cancelledStale++;
+}
+
 // ── Sync de calendarios iCal externos importados (Booking/Airbnb → bloqueos) ──
 $syncedImports = 0;
 $imports = $db->query("SELECT * FROM rt_ical_imports")->fetchAll();
@@ -127,4 +145,5 @@ rtOut([
     'overdue_reminders_sent' => $sentOverdue,
     'ical_imports_synced'    => $syncedImports,
     'resources_flagged_dirty' => $flaggedDirty,
+    'stale_online_cancelled' => $cancelledStale,
 ]);
