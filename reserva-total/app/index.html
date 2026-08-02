@@ -249,7 +249,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doResetPassword()"><i class="fas fa-key"></i> Guardar y entrar</button>
     </div>
 
-    <div class="login-footer">Diseñado y programado por Durval Muñoz Codazzi<br>v2.4 · Reserva Total®</div>
+    <div class="login-footer">Diseñado y programado por Durval Muñoz Codazzi<br><span id="loginVersion">v…</span> · Reserva Total®</div>
   </div>
 </div>
 
@@ -259,7 +259,7 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
   <div id="topbar">
     <div class="tb-logo">
       <i class="fas fa-calendar-alt"></i> Reserva Total
-      <span class="tb-version">v2.4</span>
+      <span class="tb-version" id="tbVersion">v…</span>
     </div>
     <div class="tb-sep"></div>
     <div class="tb-nav">
@@ -931,6 +931,15 @@ const APP_BASE = (() => {
 })();
 const BASE = APP_BASE + 'api/';
 
+fetch(BASE + 'ping.php').then(r => r.json()).then(d => {
+  if (!d.version) return;
+  const v = 'v' + d.version;
+  const a = document.getElementById('tbVersion');
+  const b = document.getElementById('loginVersion');
+  if (a) a.textContent = v;
+  if (b) b.textContent = v;
+}).catch(() => {});
+
 async function api(endpoint, method = 'GET', body = null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
@@ -1319,6 +1328,7 @@ function openNewReservation(resourceId = null, dateStr = null) {
   document.getElementById('mrInternal').value = '';
   document.getElementById('mrStatus').value = 'confirmed';
   document.getElementById('mrPayment').value = 'cash';
+  document.getElementById('mrResource').value = '';
   calculatedPrice = 0;
 
   if (fpIn) fpIn.clear();

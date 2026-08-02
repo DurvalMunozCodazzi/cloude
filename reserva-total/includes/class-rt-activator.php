@@ -422,6 +422,7 @@ class RT_Activator {
         $c .= "define('RT_UPLOAD_DIR', " . var_export($uploadDir, true) . ");\n";
         $c .= "define('RT_CRON_SECRET'," . var_export($secret,    true) . ");\n";
         $c .= "define('RT_SESSION_HOURS', 24);\n";
+        $c .= "define('RT_VERSION',    " . var_export(RT_VERSION, true) . ");\n";
         $c .= "define('RT_LICENSE_KEY',    " . var_export($license_key, true) . ");\n";
         $c .= "define('RT_LICENSE_SERVER', " . var_export($license_srv, true) . ");\n";
 
