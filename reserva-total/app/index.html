@@ -481,6 +481,14 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <button type="button" class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="addPayment(editReservationId)"><i class="fas fa-plus"></i> Registrar pago</button>
       <button type="button" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="sendReservationSummary(editReservationId, document.getElementById('mrEmail').value.trim())"><i class="fas fa-paper-plane"></i> Enviar comprobante al huésped</button>
     </div>
+    <div class="fg" id="mrCheckinSection" style="display:none">
+      <label>Check-in digital</label>
+      <div id="mrCheckinStatus" style="font-size:12px;color:var(--t2);margin-bottom:8px">Cargando...</div>
+      <div style="display:flex;gap:6px">
+        <button type="button" class="btn btn-secondary btn-sm" style="flex:1" onclick="generateCheckinLink()"><i class="fas fa-link"></i> Generar / copiar link</button>
+      </div>
+      <input id="mrCheckinUrl" type="text" readonly style="display:none;margin-top:8px;font-size:11px">
+    </div>
     <div class="fg"><label>Notas para el huésped</label><textarea id="mrNotes" rows="2" placeholder="Información para el huésped..."></textarea></div>
     <div class="fg"><label>Notas internas</label><textarea id="mrInternal" rows="2" placeholder="Solo visible para el equipo..."></textarea></div>
     <div class="modal-footer">
@@ -718,6 +726,10 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       <button class="btn btn-secondary btn-sm" onclick="repNav(1)">Mes siguiente ›</button>
     </div>
     <div id="repContent"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--bdr)">
+      <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center" onclick="exportReportCsv()"><i class="fas fa-file-excel"></i> Descargar Excel (CSV)</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center" onclick="printReport()"><i class="fas fa-file-pdf"></i> Imprimir / Guardar PDF</button>
+    </div>
   </div>
 </div>
 
@@ -759,6 +771,16 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
       </div>
       <button class="btn btn-primary btn-sm" onclick="createRate()"><i class="fas fa-plus"></i> Agregar tarifa</button>
       <div id="rateList" style="margin-top:16px"></div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)">
+        <label style="display:block;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Descuentos por estadía larga</label>
+        <div class="row2">
+          <div class="fg"><label>Desde cuántas noches</label><input id="discMinNights" type="number" min="1" placeholder="7"></div>
+          <div class="fg"><label>% de descuento</label><input id="discPct" type="number" min="1" max="100" step="0.01" placeholder="10"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="createDiscount()"><i class="fas fa-plus"></i> Agregar descuento</button>
+        <div id="discList" style="margin-top:16px"></div>
+      </div>
     </div>
 
     <!-- TAB: ENLACES PÚBLICOS E ICAL -->
@@ -815,6 +837,7 @@ let RESOURCES = [];
 let RESERVATIONS = [];
 let BLOCKS = [];
 let SEASONAL_RATES = [];
+let DISCOUNTS = [];
 let YEAR = new Date().getFullYear();
 let MONTH = new Date().getMonth() + 1; // 1-12
 let VIEW = 'gantt';
@@ -827,6 +850,29 @@ const DAYS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const STATUS_LABELS = {confirmed:'Confirmada',pending:'Pendiente',paid:'Pagada',in_progress:'En curso',completed:'Finalizada',cancelled:'Cancelada'};
 const STATUS_COLORS = {confirmed:'var(--confirmed)',pending:'var(--pending)',paid:'var(--paid)',in_progress:'var(--in_progress)',completed:'var(--completed)',cancelled:'var(--cancelled)'};
 const TYPE_ICONS = {room:'fa-bed',cabin:'fa-house',apartment:'fa-building',house:'fa-house-chimney',other:'fa-box'};
+
+// ── Estado de limpieza (housekeeping) ──────────────────────────────────────
+const HK_NEXT  = { listo: 'sucio', sucio: 'limpieza', limpieza: 'listo' };
+const HK_ICON  = { listo: 'fa-check-circle', sucio: 'fa-exclamation-circle', limpieza: 'fa-broom' };
+const HK_COLOR = { listo: '#16a34a', sucio: '#ef4444', limpieza: '#f59e0b' };
+const HK_LABEL = { listo: 'Listo', sucio: 'Sucio', limpieza: 'En limpieza' };
+
+function housekeepingBadgeHtml(r) {
+  const st = r.housekeeping_status || 'listo';
+  return `<i class="fas ${HK_ICON[st]}" style="color:${HK_COLOR[st]};cursor:pointer;flex-shrink:0" title="Limpieza: ${HK_LABEL[st]} — clic para cambiar" onclick="event.stopPropagation(); cycleHousekeeping(${r.id}, '${st}')"></i>`;
+}
+
+async function cycleHousekeeping(resourceId, current) {
+  const next = HK_NEXT[current] || 'listo';
+  try {
+    await api('resources.php?action=set_housekeeping&id=' + resourceId, 'POST', { status: next });
+    const r = RESOURCES.find(x => x.id == resourceId);
+    if (r) r.housekeeping_status = next;
+    renderGantt();
+    renderResourcePanel();
+    notify('Limpieza: ' + HK_LABEL[next], 'ok');
+  } catch(e) { notify(e.message, 'er'); }
+}
 const COLORS = ['#0d9488','#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e','#ef4444','#6366f1','#f97316','#06b6d4'];
 
 // ── API ───────────────────────────────────────────────────────────────────
@@ -973,6 +1019,7 @@ async function loadData() {
       api(`blocks.php?action=list&year=${YEAR}&month=${MONTH}`),
       loadExtrasCatalog(),
       loadSeasonalRates(),
+      loadDiscounts(),
     ]);
     RESOURCES = rRes.resources || [];
     RESERVATIONS = resData.reservations || [];
@@ -992,6 +1039,13 @@ async function loadSeasonalRates() {
     const d = await api('seasonal_rates.php?action=list');
     SEASONAL_RATES = d.rates || [];
   } catch(e) { SEASONAL_RATES = []; }
+}
+
+async function loadDiscounts() {
+  try {
+    const d = await api('discounts.php?action=list');
+    DISCOUNTS = d.discounts || [];
+  } catch(e) { DISCOUNTS = []; }
 }
 
 // ── MONTH NAV ─────────────────────────────────────────────────────────────
@@ -1046,6 +1100,7 @@ function renderGantt() {
     row.className = 'gantt-resource-row';
     row.innerHTML = `<div class="res-dot" style="background:${r.color}"></div>
       <span class="res-name">${esc(r.name)}</span>
+      ${housekeepingBadgeHtml(r)}
       <i class="fas ${TYPE_ICONS[r.type]||'fa-box'} res-type-icon"></i>`;
     row.onclick = () => openResourceModal(r.id);
     rl.appendChild(row);
@@ -1208,12 +1263,13 @@ async function openReservationDetail(id) {
       <div><div class="sp-label">Duración</div><div class="sp-value">${durLabel(ci,co)}</div></div>
       <div><div class="sp-label">Personas</div><div class="sp-value">${rv.adults||1} adulto(s)${rv.children>0?' + '+rv.children+' niño(s)':''}</div></div>
     </div>
-    ${rv.guest_email||rv.guest_phone||rv.guest_doc ? `
+    ${rv.guest_email||rv.guest_phone||rv.guest_doc||rv.guest_address ? `
     <div class="sp-section">
       <div class="sp-label" style="margin-bottom:8px">Datos del huésped</div>
-      ${rv.guest_email ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-envelope" style="width:16px"></i> ${esc(rv.guest_email)}</div>` : ''}
-      ${rv.guest_phone ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-phone" style="width:16px"></i> ${esc(rv.guest_phone)}</div>` : ''}
-      ${rv.guest_doc   ? `<div style="font-size:12px;color:var(--t2)"><i class="fas fa-id-card" style="width:16px"></i> ${esc(rv.guest_doc)}</div>` : ''}
+      ${rv.guest_email   ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-envelope" style="width:16px"></i> ${esc(rv.guest_email)}</div>` : ''}
+      ${rv.guest_phone   ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-phone" style="width:16px"></i> ${esc(rv.guest_phone)}</div>` : ''}
+      ${rv.guest_doc     ? `<div style="font-size:12px;color:var(--t2);margin-bottom:4px"><i class="fas fa-id-card" style="width:16px"></i> ${esc(rv.guest_doc)}</div>` : ''}
+      ${rv.guest_address ? `<div style="font-size:12px;color:var(--t2)"><i class="fas fa-map-marker-alt" style="width:16px"></i> ${esc(rv.guest_address)}</div>` : ''}
       ${rv.guests && rv.guests.length ? `<div style="font-size:12px;color:var(--t2);margin-top:4px"><i class="fas fa-users" style="width:16px"></i> Con: ${rv.guests.map(g=>esc(g.first_name)).join(', ')}</div>` : ''}
     </div>` : ''}
     ${rv.client_id ? `
@@ -1300,6 +1356,7 @@ function openNewReservation(resourceId = null, dateStr = null) {
   document.getElementById('mrClientSearch').value = '';
   document.getElementById('mrCompanionsBox').style.display = 'none';
   document.getElementById('mrPaymentsSection').style.display = 'none';
+  document.getElementById('mrCheckinSection').style.display = 'none';
   loadClientsForReservationForm();
 
   if (resourceId) {
@@ -1358,7 +1415,45 @@ async function openEditReservation(id) {
   document.getElementById('mrInternal').value = rv.internal_notes || '';
   document.getElementById('mrPaymentsSection').style.display = '';
   renderReservationPayments(rv);
+  document.getElementById('mrCheckinSection').style.display = '';
+  document.getElementById('mrCheckinUrl').style.display = 'none';
+  loadCheckinStatus(id);
   openMo('moReserva');
+}
+
+// ── Check-in digital dentro del modal de Editar Reserva ────────────────────
+async function loadCheckinStatus(reservationId) {
+  const box = document.getElementById('mrCheckinStatus');
+  box.textContent = 'Cargando...';
+  try {
+    const d = await api('reservations.php?action=checkin_submission&id=' + reservationId);
+    const s = d.submission;
+    if (s && s.accepted_terms == 1) {
+      const dt = s.submitted_at ? new Date(s.submitted_at.replace(' ','T')) : null;
+      let html = `<span style="color:#16a34a"><i class="fas fa-check-circle"></i> Completado</span>`
+               + (dt ? ` el ${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} — firmado por ${esc(s.signature_name)}` : '');
+      if (s.dni_photo_path) {
+        html += ` · <a href="uploads/${encodeURIComponent(s.dni_photo_path)}" target="_blank" style="color:var(--acc)">Ver foto de DNI</a>`;
+      }
+      box.innerHTML = html;
+    } else {
+      box.innerHTML = '<span style="color:var(--t3)"><i class="fas fa-clock"></i> Pendiente — el huésped todavía no completó el formulario</span>';
+    }
+  } catch(e) { box.textContent = 'No se pudo cargar el estado'; }
+}
+
+async function generateCheckinLink() {
+  if (!editReservationId) return;
+  try {
+    const d = await api('reservations.php?action=generate_checkin_link&id=' + editReservationId, 'POST');
+    const url = APP_BASE + 'checkin.php?token=' + encodeURIComponent(d.token);
+    const input = document.getElementById('mrCheckinUrl');
+    input.value = url;
+    input.style.display = '';
+    input.select(); input.setSelectionRange(0, 99999);
+    navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(url) : document.execCommand('copy');
+    notify('Link de check-in copiado al portapapeles', 'ok');
+  } catch(e) { notify(e.message, 'er'); }
 }
 
 // ── Pagos dentro del modal de Editar Reserva ───────────────────────────────
@@ -1538,6 +1633,7 @@ function renderResourcePanel() {
         <div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.name)}</div>
         <div style="font-size:10px;color:var(--t3)">${typeLabel(r.type)} · $${fmt(r.price_per_day||0)}/día</div>
       </div>
+      ${housekeepingBadgeHtml(r)}
       <button class="btn-icon" onclick="openResourceModal(${r.id})"><i class="fas fa-edit"></i></button>`;
     el.appendChild(div);
   });
@@ -1948,6 +2044,17 @@ function renderReportContent(d) {
     </div>`;
 }
 
+function exportReportCsv() {
+  const url = BASE + `reports.php?action=export_csv&year=${REP_YEAR}&month=${REP_MONTH}&token=` + encodeURIComponent(TOKEN);
+  window.open(url, '_blank');
+}
+
+function printReport() {
+  const url = BASE + `reports.php?action=print&year=${REP_YEAR}&month=${REP_MONTH}&token=` + encodeURIComponent(TOKEN);
+  const w = window.open(url, '_blank', 'width=760,height=800,scrollbars=yes');
+  if (!w) notify('Habilitá los popups del navegador para imprimir', 'wa');
+}
+
 // ── DISPONIBILIDAD Y SYNC ─────────────────────────────────────────────────
 function switchAvTab(tab) {
   const tabs = { blocks: 'avTabBlocks', rates: 'avTabRates', sync: 'avTabSync' };
@@ -1966,7 +2073,7 @@ async function openAvailabilityModal() {
   document.getElementById('icalResource').innerHTML = opts;
   document.getElementById('syncLinksBox').style.display = 'none';
   switchAvTab('blocks');
-  await Promise.all([loadBlocksAdminList(), loadRatesList(), loadIcalImportsList()]);
+  await Promise.all([loadBlocksAdminList(), loadRatesList(), loadIcalImportsList(), loadDiscountsList()]);
   openMo('moAvailability');
 }
 
@@ -2074,6 +2181,45 @@ async function deleteRate(id) {
     await api('seasonal_rates.php?action=delete&id=' + id, 'DELETE');
     notify('Tarifa eliminada', 'wa');
     await loadRatesList();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+// ── Descuentos por estadía larga ──────────────────────────────────────────
+async function loadDiscountsList() {
+  const box = document.getElementById('discList');
+  box.innerHTML = '<div style="font-size:12px;color:var(--t3)">Cargando...</div>';
+  try {
+    await loadDiscounts();
+    box.innerHTML = DISCOUNTS.length ? DISCOUNTS.map(d => `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+        <div>A partir de <strong style="color:var(--t1)">${d.min_nights} noche(s)</strong> → <strong style="color:var(--acc)">${parseFloat(d.discount_pct)}% de descuento</strong></div>
+        <button class="btn-icon btn-sm" onclick="deleteDiscount(${d.id})" title="Eliminar descuento"><i class="fas fa-trash" style="color:#ef4444"></i></button>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">Sin descuentos cargados</div>';
+  } catch(e) { box.innerHTML = `<div style="font-size:12px;color:var(--cancelled)">${esc(e.message)}</div>`; }
+}
+
+async function createDiscount() {
+  const body = {
+    min_nights:   parseInt(document.getElementById('discMinNights').value) || 0,
+    discount_pct: parseFloat(document.getElementById('discPct').value) || 0,
+  };
+  if (body.min_nights < 1) { notify('Ingresá el mínimo de noches', 'er'); return; }
+  if (body.discount_pct <= 0 || body.discount_pct > 100) { notify('Ingresá un % de descuento válido (1-100)', 'er'); return; }
+  try {
+    await api('discounts.php?action=create', 'POST', body);
+    notify('Descuento agregado', 'ok');
+    document.getElementById('discMinNights').value = '';
+    document.getElementById('discPct').value = '';
+    await loadDiscountsList();
+  } catch(e) { notify(e.message, 'er'); }
+}
+
+async function deleteDiscount(id) {
+  if (!confirm('¿Eliminar este descuento?')) return;
+  try {
+    await api('discounts.php?action=delete&id=' + id, 'DELETE');
+    notify('Descuento eliminado', 'wa');
+    await loadDiscountsList();
   } catch(e) { notify(e.message, 'er'); }
 }
 
@@ -2585,6 +2731,15 @@ function recalcPrice(forceUpdate = false) {
     desc = usedSeasonal
       ? `calculado: ${nights} noche(s) — incluye tarifa de temporada`
       : `calculado: ${nights} noche(s) × $${fmt(res.price_per_day)}`;
+
+    // Descuento por estadía larga: aplica el mayor tramo alcanzado
+    const applicable = DISCOUNTS.filter(dd => nights >= parseInt(dd.min_nights));
+    if (applicable.length) {
+      applicable.sort((a,b) => b.min_nights - a.min_nights);
+      const pct = parseFloat(applicable[0].discount_pct);
+      price = Math.round(price * (1 - pct/100) * 100) / 100;
+      desc += ` — ${pct}% desc. estadía larga`;
+    }
   } else {
     hint.style.display = 'none'; return;
   }

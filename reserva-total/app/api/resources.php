@@ -84,6 +84,16 @@ if ($method === 'POST' && $action === 'generate_public_link') {
     rtOut(['token' => $token]);
 }
 
+// ── POST estado de limpieza (listo/sucio/limpieza) ────────────
+if ($method === 'POST' && $action === 'set_housekeeping') {
+    if (!$id) rtErr('ID requerido');
+    $b = json_decode(file_get_contents('php://input'), true);
+    $status = $b['status'] ?? '';
+    if (!in_array($status, ['listo','sucio','limpieza'])) rtErr('Estado inválido');
+    $db->prepare("UPDATE resources SET housekeeping_status=? WHERE id=?")->execute([$status, $id]);
+    rtOut(['ok' => true, 'housekeeping_status' => $status]);
+}
+
 // ── POST reorder ─────────────────────────────────────────────
 if ($method === 'POST' && $action === 'reorder') {
     rtRequireAdmin();

@@ -231,7 +231,7 @@ if ($method === 'PUT' && $action === 'update') {
     // Si cambian las fechas, volver a habilitar los recordatorios automáticos
     // para que se re-evalúen contra la nueva fecha en el próximo cron.
     if (array_key_exists('check_in', $b))  { $sets[] = 'checkin_reminder_sent=0'; }
-    if (array_key_exists('check_out', $b)) { $sets[] = 'overdue_reminder_sent=0'; }
+    if (array_key_exists('check_out', $b)) { $sets[] = 'overdue_reminder_sent=0'; $sets[] = 'housekeeping_flagged=0'; }
     if ($sets) {
         $vals[] = $id;
         $db->prepare("UPDATE reservations SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
@@ -273,6 +273,25 @@ if ($method === 'DELETE' && $action === 'delete_payment') {
     if (!$paymentId) rtErr('payment_id requerido');
     $db->prepare("DELETE FROM reservation_payments WHERE id=?")->execute([$paymentId]);
     rtOut(['ok' => true]);
+}
+
+// ── POST generar (u obtener) el link de check-in digital ──────
+if ($method === 'POST' && $action === 'generate_checkin_link') {
+    if (!$id) rtErr('ID requerido');
+    $st = $db->prepare("SELECT checkin_token FROM reservations WHERE id=?"); $st->execute([$id]);
+    $row = $st->fetch();
+    if (!$row) rtErr('Reserva no encontrada', 404);
+    $token = $row['checkin_token'] ?: bin2hex(random_bytes(20));
+    $db->prepare("UPDATE reservations SET checkin_token=? WHERE id=?")->execute([$token, $id]);
+    rtOut(['token' => $token]);
+}
+
+// ── GET el checklist de check-in ya completado por el huésped ──
+if ($method === 'GET' && $action === 'checkin_submission') {
+    if (!$id) rtErr('ID requerido');
+    $st = $db->prepare("SELECT * FROM rt_checkin_submissions WHERE reservation_id=?");
+    $st->execute([$id]);
+    rtOut(['submission' => $st->fetch() ?: null]);
 }
 
 // ── GET disponibilidad de un recurso en un mes ───────────────

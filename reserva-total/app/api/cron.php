@@ -78,6 +78,17 @@ if ($notifyEmail) {
     }
 }
 
+// ── Limpieza: marcar "sucio" el recurso apenas pasa el checkout de un huésped ──
+$flaggedDirty = 0;
+$st3 = $db->prepare("SELECT id, resource_id FROM reservations
+    WHERE status != 'cancelled' AND housekeeping_flagged = 0 AND check_out < NOW()");
+$st3->execute();
+foreach ($st3->fetchAll() as $rv) {
+    $db->prepare("UPDATE resources SET housekeeping_status='sucio' WHERE id=?")->execute([$rv['resource_id']]);
+    $db->prepare("UPDATE reservations SET housekeeping_flagged=1 WHERE id=?")->execute([$rv['id']]);
+    $flaggedDirty++;
+}
+
 // ── Sync de calendarios iCal externos importados (Booking/Airbnb → bloqueos) ──
 $syncedImports = 0;
 $imports = $db->query("SELECT * FROM rt_ical_imports")->fetchAll();
@@ -90,4 +101,5 @@ rtOut([
     'checkin_reminders_sent' => $sentCheckin,
     'overdue_reminders_sent' => $sentOverdue,
     'ical_imports_synced'    => $syncedImports,
+    'resources_flagged_dirty' => $flaggedDirty,
 ]);

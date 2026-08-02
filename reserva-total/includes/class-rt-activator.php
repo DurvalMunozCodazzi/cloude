@@ -225,6 +225,27 @@ class RT_Activator {
             KEY `resource_id` (`resource_id`)
         ) $charset");
 
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_long_stay_discounts` (
+            `id`           INT NOT NULL AUTO_INCREMENT,
+            `min_nights`   INT NOT NULL,
+            `discount_pct` DECIMAL(5,2) NOT NULL DEFAULT 0,
+            `created_at`   DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `min_nights` (`min_nights`)
+        ) $charset");
+
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `rt_checkin_submissions` (
+            `id`             INT NOT NULL AUTO_INCREMENT,
+            `reservation_id` INT NOT NULL,
+            `dni_photo_path` VARCHAR(255) DEFAULT NULL,
+            `signature_name` VARCHAR(200) DEFAULT '',
+            `accepted_terms` TINYINT DEFAULT 0,
+            `submitted_at`   DATETIME DEFAULT NULL,
+            `ip_address`     VARCHAR(64) DEFAULT '',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `reservation_id` (`reservation_id`)
+        ) $charset");
+
         self::migrate_extras_catalog();
         self::migrate_users();
         self::migrate_reservations();
@@ -245,15 +266,28 @@ class RT_Activator {
         if (!in_array('overdue_reminder_sent', $cols)) {
             $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `overdue_reminder_sent` TINYINT DEFAULT 0");
         }
+        if (!in_array('housekeeping_flagged', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `housekeeping_flagged` TINYINT DEFAULT 0");
+        }
+        if (!in_array('checkin_token', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `checkin_token` VARCHAR(64) DEFAULT NULL, ADD KEY `checkin_token` (`checkin_token`)");
+        }
+        if (!in_array('guest_address', $cols)) {
+            $wpdb->query("ALTER TABLE `reservations` ADD COLUMN `guest_address` VARCHAR(300) DEFAULT ''");
+        }
     }
 
-    // Token público (calendario de disponibilidad + feed iCal) para instalaciones
-    // de resources creadas antes de que existiera esta funcionalidad.
+    // Token público (calendario de disponibilidad + feed iCal) + estado de
+    // limpieza, para instalaciones de resources creadas antes de que
+    // existiera esta funcionalidad.
     private static function migrate_resources() {
         global $wpdb;
         $cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `resources`", ARRAY_A), 'Field');
         if (!in_array('public_token', $cols)) {
             $wpdb->query("ALTER TABLE `resources` ADD COLUMN `public_token` VARCHAR(64) DEFAULT NULL, ADD KEY `public_token` (`public_token`)");
+        }
+        if (!in_array('housekeeping_status', $cols)) {
+            $wpdb->query("ALTER TABLE `resources` ADD COLUMN `housekeeping_status` VARCHAR(20) DEFAULT 'listo'");
         }
     }
 
