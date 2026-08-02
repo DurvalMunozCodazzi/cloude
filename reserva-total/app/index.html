@@ -1482,6 +1482,9 @@ async function loadCheckinStatus(reservationId) {
       if (s.dni_photo_path) {
         html += ` · <a href="uploads/${encodeURIComponent(s.dni_photo_path)}" target="_blank" style="color:var(--acc)">Ver foto de DNI</a>`;
       }
+      if (s.valuables) {
+        html += `<div style="margin-top:4px;color:#b45309"><i class="fas fa-gem"></i> Objetos de valor declarados: ${esc(s.valuables)}</div>`;
+      }
       box.innerHTML = html;
     } else {
       box.innerHTML = '<span style="color:var(--t3)"><i class="fas fa-clock"></i> Pendiente — el huésped todavía no completó el formulario</span>';

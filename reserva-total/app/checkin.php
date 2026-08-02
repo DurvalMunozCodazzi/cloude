@@ -78,11 +78,27 @@ $ci = new DateTime($rv['check_in']);
       <input type="text" name="guest_address" value="<?= htmlspecialchars($rv['guest_address'] ?? '') ?>">
       <label>Foto del DNI (opcional)</label>
       <input type="file" name="dni_photo" accept="image/jpeg,image/png,image/webp">
+      <label>Objetos de valor a declarar <span style="text-transform:none;font-weight:400">(dinero, joyas, electrónica de valor — opcional)</span></label>
+      <input type="text" name="valuables" placeholder="Ej: notebook, cámara réflex, $200.000 en efectivo"
+             value="<?= htmlspecialchars($submission['valuables'] ?? '') ?>">
+
+      <details style="margin-top:16px;border:1px solid #e1e4ec;border-radius:8px;padding:10px 12px;font-size:12px;color:#4a4f63;line-height:1.6">
+        <summary style="cursor:pointer;font-weight:700;color:#14161f">Términos y condiciones — Depósito en hoteles (arts. 1367 a 1375, Código Civil y Comercial de la Nación)</summary>
+        <div style="margin-top:8px">
+          <p style="margin-bottom:6px">El alojamiento se rige por las normas del <strong>depósito necesario en hoteles</strong> del Código Civil y Comercial de la Nación (arts. 1367 a 1375):</p>
+          <p style="margin-bottom:6px">• El establecimiento responde por los daños o pérdidas de los <strong>efectos introducidos</strong> por el huésped, y por el <strong>vehículo</strong> guardado en el establecimiento o en lugares puestos a su disposición (art. 1369).</p>
+          <p style="margin-bottom:6px">• <strong>Objetos de valor superior al que ordinariamente llevan los viajeros</strong> (dinero, joyas, electrónica de alto valor, documentación valiosa): el huésped <strong>debe declararlos</strong> en el campo de arriba y entregarlos en custodia al establecimiento. Si no se declaran, el establecimiento no responde por ellos más allá del valor ordinario (art. 1372).</p>
+          <p style="margin-bottom:6px">• El establecimiento <strong>no responde por los objetos dejados dentro de los vehículos</strong> (art. 1371).</p>
+          <p style="margin-bottom:6px">• El establecimiento no responde cuando el daño o la pérdida se debe a <strong>caso fortuito o fuerza mayor ajena a su actividad</strong>, o a culpa del propio huésped o de sus visitantes (art. 1371).</p>
+          <p>• Los derechos que este régimen otorga al huésped son irrenunciables: toda cláusula que excluya o limite la responsabilidad del establecimiento se tiene por no escrita (art. 1374).</p>
+        </div>
+      </details>
+
       <label>Firma — escribí tu nombre completo *</label>
       <input type="text" name="signature_name" required placeholder="Tu nombre y apellido">
       <div class="chk">
         <input type="checkbox" id="acceptChk" name="accepted_terms" value="1" required>
-        <label for="acceptChk" style="margin:0;text-transform:none;font-weight:400;font-size:12px">Acepto los términos y condiciones del establecimiento y confirmo que los datos cargados son correctos.</label>
+        <label for="acceptChk" style="margin:0;text-transform:none;font-weight:400;font-size:12px">Leí y acepto los términos y condiciones (incluido el régimen de depósito en hoteles, arts. 1367 a 1375 CCyC), declaré mis objetos de valor si los llevo, y confirmo que los datos cargados son correctos.</label>
       </div>
       <button type="submit" id="ckBtn">Enviar check-in</button>
       <div class="msg" id="ckMsg"></div>

@@ -251,11 +251,16 @@ class RT_Activator {
             `dni_photo_path` VARCHAR(255) DEFAULT NULL,
             `signature_name` VARCHAR(200) DEFAULT '',
             `accepted_terms` TINYINT DEFAULT 0,
+            `valuables`      VARCHAR(500) DEFAULT '',
             `submitted_at`   DATETIME DEFAULT NULL,
             `ip_address`     VARCHAR(64) DEFAULT '',
             PRIMARY KEY (`id`),
             UNIQUE KEY `reservation_id` (`reservation_id`)
         ) $charset");
+        $ckCols = array_column($wpdb->get_results("SHOW COLUMNS FROM `rt_checkin_submissions`", ARRAY_A), 'Field');
+        if (!in_array('valuables', $ckCols)) {
+            $wpdb->query("ALTER TABLE `rt_checkin_submissions` ADD COLUMN `valuables` VARCHAR(500) DEFAULT '' AFTER `accepted_terms`");
+        }
 
         self::migrate_extras_catalog();
         self::migrate_users();

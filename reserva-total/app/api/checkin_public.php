@@ -21,6 +21,7 @@ if ($method === 'POST' && $action === 'submit') {
     $address   = trim($_POST['guest_address'] ?? '');
     $signature = trim($_POST['signature_name'] ?? '');
     $accepted  = !empty($_POST['accepted_terms']);
+    $valuables = trim($_POST['valuables'] ?? '');
 
     if (!$name)      rtErr('El nombre es requerido');
     if (!$doc)       rtErr('El DNI o pasaporte es obligatorio para el registro de huéspedes');
@@ -52,14 +53,14 @@ if ($method === 'POST' && $action === 'submit') {
     if ($row) {
         $finalPhoto = $photoPath ?: $row['dni_photo_path'];
         $db->prepare("UPDATE rt_checkin_submissions
-                      SET signature_name=?, accepted_terms=1, submitted_at=NOW(), ip_address=?, dni_photo_path=?
+                      SET signature_name=?, accepted_terms=1, valuables=?, submitted_at=NOW(), ip_address=?, dni_photo_path=?
                       WHERE reservation_id=?")
-           ->execute([$signature, $ip, $finalPhoto, $id]);
+           ->execute([$signature, $valuables, $ip, $finalPhoto, $id]);
     } else {
         $db->prepare("INSERT INTO rt_checkin_submissions
-                      (reservation_id,dni_photo_path,signature_name,accepted_terms,submitted_at,ip_address)
-                      VALUES (?,?,?,1,NOW(),?)")
-           ->execute([$id, $photoPath, $signature, $ip]);
+                      (reservation_id,dni_photo_path,signature_name,accepted_terms,valuables,submitted_at,ip_address)
+                      VALUES (?,?,?,1,?,NOW(),?)")
+           ->execute([$id, $photoPath, $signature, $valuables, $ip]);
     }
 
     rtOut(['ok' => true]);

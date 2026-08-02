@@ -3,7 +3,7 @@
  * Plugin Name:  Reserva Total
  * Plugin URI:   https://reservatotal.com.ar
  * Description:  Sistema de reservas para hoteles, cabañas, vehículos y herramientas.
- * Version:      4.1.1
+ * Version:      4.2.0
  * Author:       Durval Muñoz Codazzi
  * Author URI:   https://websobreruedas.ar
  * License:      Proprietary
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('RT_VERSION',    '4.1.1');
+define('RT_VERSION',    '4.2.0');
 define('RT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RT_APP_DIR',    RT_PLUGIN_DIR . 'app/');
