@@ -103,9 +103,11 @@ label{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom
 .gantt-cell{width:38px;min-width:38px;flex-shrink:0;border-right:1px solid var(--bdr);height:100%;cursor:pointer;transition:.15s}
 .gantt-cell:hover{background:rgba(13,148,136,.08)}
 .gantt-cell.today{background:rgba(13,148,136,.05);border-color:var(--acc)}
+.gantt-cell.drop-target{background:rgba(13,148,136,.25)!important;outline:2px dashed var(--acc);outline-offset:-2px}
 .gantt-bars{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
-.gantt-bar{position:absolute;height:34px;top:9px;border-radius:6px;cursor:pointer;pointer-events:all;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.gantt-bar{position:absolute;height:34px;top:9px;border-radius:6px;cursor:grab;pointer-events:all;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.15s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .gantt-bar:hover{filter:brightness(1.15);transform:scaleY(1.05);z-index:5}
+.gantt-bar.dragging{opacity:.4}
 .gantt-bar-blocked{background:repeating-linear-gradient(45deg,#767b90,#767b90 8px,#5c6072 8px,#5c6072 16px)!important;color:#fff!important}
 
 /* ── LIST VIEW ── */
@@ -892,6 +894,8 @@ let MONTH = new Date().getMonth() + 1; // 1-12
 let VIEW = 'gantt';
 let editReservationId = null;
 let editResourceId = null;
+let DRAG_RESERVATION_ID = null;
+let DRAG_MOVED = false;
 
 const DAY_W = 38; // px per day column
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1181,6 +1185,9 @@ function renderGantt() {
       cell.className = 'gantt-cell' + (d===todayD?' today':'');
       const dateStr = `${YEAR}-${String(MONTH).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       cell.onclick = () => openNewReservation(r.id, dateStr);
+      cell.ondragover = (e) => { e.preventDefault(); cell.classList.add('drop-target'); };
+      cell.ondragleave = () => cell.classList.remove('drop-target');
+      cell.ondrop = (e) => { e.preventDefault(); cell.classList.remove('drop-target'); DRAG_MOVED = true; handleReservationDrop(r.id, d); };
       rowEl.appendChild(cell);
     }
     wrap.appendChild(rowEl);
@@ -1213,8 +1220,16 @@ function renderGantt() {
       bar.className = 'gantt-bar';
       bar.style.cssText = `left:${left}px;width:${width}px;background:${barColor}`;
       bar.textContent = rv.guest_name;
-      bar.title = `${rv.guest_name} · ${fmtDate(rv.check_in)} → ${fmtDate(rv.check_out)}`;
-      bar.onclick = (e) => { e.stopPropagation(); openEditReservation(rv.id); };
+      bar.title = `${rv.guest_name} · ${fmtDate(rv.check_in)} → ${fmtDate(rv.check_out)} · arrastrá para mover`;
+      bar.onclick = (e) => { e.stopPropagation(); if (!DRAG_MOVED) openEditReservation(rv.id); };
+      bar.draggable = true;
+      bar.ondragstart = (e) => {
+        DRAG_RESERVATION_ID = rv.id;
+        DRAG_MOVED = false;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => bar.classList.add('dragging'), 0);
+      };
+      bar.ondragend = () => bar.classList.remove('dragging');
       barsEl.appendChild(bar);
     });
 
@@ -1247,6 +1262,48 @@ function renderGantt() {
   if (todayD > 0) {
     const right = document.getElementById('ganttRight');
     right.scrollLeft = Math.max(0, (todayD - 4) * DAY_W);
+  }
+}
+
+// ── DRAG & DROP: mover una reserva a otra fecha y/o recurso ────────────────
+async function handleReservationDrop(newResourceId, newDay) {
+  const rvId = DRAG_RESERVATION_ID;
+  DRAG_RESERVATION_ID = null;
+  setTimeout(() => { DRAG_MOVED = false; }, 300);
+  if (!rvId) return;
+
+  const rv = RESERVATIONS.find(r => r.id == rvId);
+  if (!rv) return;
+
+  const ci = new Date(rv.check_in.replace(' ','T'));
+  const co = new Date(rv.check_out.replace(' ','T'));
+  const durationMs = co - ci;
+
+  const newCheckIn = new Date(YEAR, MONTH-1, newDay, ci.getHours(), ci.getMinutes());
+  const newCheckOut = new Date(newCheckIn.getTime() + durationMs);
+
+  const sameResource = String(newResourceId) === String(rv.resource_id);
+  const sameDay = newCheckIn.getFullYear()===ci.getFullYear() && newCheckIn.getMonth()===ci.getMonth() && newCheckIn.getDate()===ci.getDate();
+  if (sameResource && sameDay) return; // soltó en el mismo lugar — nada que hacer
+
+  const toMySQL = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00`;
+  const newResource = RESOURCES.find(r => r.id == newResourceId);
+
+  const msg = sameResource
+    ? `¿Mover la reserva de ${rv.guest_name} a ${fmtDateFull(toMySQL(newCheckIn))}?`
+    : `¿Mover la reserva de ${rv.guest_name} a ${newResource ? esc(newResource.name) : 'otro recurso'}, ${fmtDateFull(toMySQL(newCheckIn))}?`;
+  if (!confirm(msg)) return;
+
+  try {
+    await api('reservations.php?action=update&id=' + rvId, 'PUT', {
+      resource_id: parseInt(newResourceId),
+      check_in:    toMySQL(newCheckIn),
+      check_out:   toMySQL(newCheckOut),
+    });
+    notify('Reserva movida ✔', 'ok');
+    await loadData();
+  } catch(e) {
+    notify(e.message, 'er');
   }
 }
 
